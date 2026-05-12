@@ -1,0 +1,15 @@
+{
+  "name": "flo",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "backend",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "docker-compose up",
+    "dev:down": "docker-compose down",
+    "dev:build": "docker-compose up --build"
+  }
+}
