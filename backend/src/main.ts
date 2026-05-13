@@ -1,8 +1,50 @@
-import { NestFactory } from '@nestjs/core';
-import { AppModule } from './app.module';
+import { NestFactory } from '@nestjs/core'
+import {
+  FastifyAdapter,
+  NestFastifyApplication,
+} from '@nestjs/platform-fastify'
+import { ValidationPipe } from '@nestjs/common'
+import { ConfigService } from '@nestjs/config'
+import { AppModule } from './app.module'
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
-  await app.listen(process.env.PORT ?? 3000);
+  const app = await NestFactory.create<NestFastifyApplication>(
+    AppModule,
+    new FastifyAdapter(),
+  )
+
+  // Security headers
+  await app.register(require('@fastify/helmet'))
+
+  // Cookie parser
+  await app.register(require('@fastify/cookie'))
+
+  // Auto validate all incoming requests
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true,
+      forbidNonWhitelisted: true,
+      transform: true,
+    }),
+  )
+
+  // Config service
+  const configService = app.get(ConfigService)
+  const port = configService.get<number>('app.port') || 4000
+  const corsOrigin = configService.get<string>('app.corsOrigin') || 'http://localhost:3000'
+
+  // CORS
+  app.enableCors({
+    origin: corsOrigin,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    credentials: true,
+  })
+
+  app.setGlobalPrefix('api')
+
+  await app.listen(port, '0.0.0.0')
+  console.log(`Flo backend running on http://localhost:${port}`)
 }
-bootstrap();
+
+bootstrap()
