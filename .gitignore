@@ -27,6 +27,7 @@ npm-debug.log*
 
 # Prisma
 prisma/migrations
+backend/generated/
 
 # IDE
 .vscode

@@ -1,0 +1,59 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma/client"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id        String    @id @default(cuid())
+  clerkId   String    @unique
+  email     String    @unique
+  fullName  String
+  avatarUrl String?
+  accounts  Account[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model Account {
+  id           String        @id @default(cuid())
+  userId       String
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bankName     String
+  accountName  String
+  basiqId      String?       @unique
+  balance      Decimal       @default(0) @db.Decimal(12, 2)
+  lastSyncedAt DateTime?
+  transactions Transaction[]
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+}
+
+model Transaction {
+  id          String          @id @default(cuid())
+  accountId   String
+  account     Account         @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  amount      Decimal         @db.Decimal(12, 2)
+  type        TransactionType
+  merchant    String
+  category    String?
+  source      SourceType      @default(BASIQ)
+  description String?
+  date        DateTime
+  raw         Json?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+}
+
+enum TransactionType {
+  DEBIT
+  CREDIT
+}
+
+enum SourceType {
+  BASIQ
+  MANUAL
+}

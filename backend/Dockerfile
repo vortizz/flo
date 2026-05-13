@@ -1,4 +1,4 @@
-FROM node:20-alpine
+FROM node:20-alpine AS base
 
 WORKDIR /app
 
@@ -13,6 +13,13 @@ COPY packages/types ./packages/types
 
 WORKDIR /app/backend
 
-EXPOSE 4000
-
+# Development stage
+FROM base AS development
+RUN npx prisma generate
 CMD ["npm", "run", "start:dev"]
+
+# Production stage
+FROM base AS production
+RUN npx prisma generate
+RUN npm run build
+CMD ["node", "dist/src/main.js"]
