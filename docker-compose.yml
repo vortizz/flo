@@ -18,15 +18,17 @@ services:
     build:
       context: .
       dockerfile: backend/Dockerfile
+      target: development
     ports:
       - "4000:4000"
     volumes:
-      - ./backend:/app/backend
+      - ./backend/src:/app/backend/src
       - ./packages:/app/packages
-      - /app/backend/node_modules
     environment:
-      - DATABASE_URL=postgresql://postgres:password@db:5432/flo
+      - DATABASE_URL=${DATABASE_URL}
+      - DIRECT_URL=${DIRECT_URL}
       - PORT=4000
+      - FRONTEND_URL=http://localhost:3000
     depends_on:
       - db
 
