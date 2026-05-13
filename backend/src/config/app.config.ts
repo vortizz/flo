@@ -4,4 +4,6 @@ export default registerAs('app', () => ({
   port: parseInt(process.env.PORT || '4000', 10),
   corsOrigin: process.env.FRONTEND_URL || 'http://localhost:3000',
   nodeEnv: process.env.NODE_ENV || 'development',
+  clerkSecretKey: process.env.CLERK_SECRET_KEY,
+  clerkWebhookSecret: process.env.CLERK_WEBHOOK_SECRET,
 }))
