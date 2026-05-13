@@ -5,6 +5,8 @@ import {
 } from '@nestjs/platform-fastify'
 import { ValidationPipe } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
+import fastifyHelmet from '@fastify/helmet'
+import fastifyCookie from '@fastify/cookie'
 import { AppModule } from './app.module'
 
 async function bootstrap() {
@@ -13,11 +15,8 @@ async function bootstrap() {
     new FastifyAdapter(),
   )
 
-  // Security headers
-  await app.register(require('@fastify/helmet'))
-
-  // Cookie parser
-  await app.register(require('@fastify/cookie'))
+  await app.register(fastifyHelmet)
+  await app.register(fastifyCookie)
 
   // Auto validate all incoming requests
   app.useGlobalPipes(
@@ -31,7 +30,8 @@ async function bootstrap() {
   // Config service
   const configService = app.get(ConfigService)
   const port = configService.get<number>('app.port') || 4000
-  const corsOrigin = configService.get<string>('app.corsOrigin') || 'http://localhost:3000'
+  const corsOrigin =
+    configService.get<string>('app.corsOrigin') || 'http://localhost:3000'
 
   // CORS
   app.enableCors({
@@ -44,7 +44,6 @@ async function bootstrap() {
   app.setGlobalPrefix('api')
 
   await app.listen(port, '0.0.0.0')
-  console.log(`Flo backend running on http://localhost:${port}`)
 }
 
 bootstrap()
