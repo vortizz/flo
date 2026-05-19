@@ -4,6 +4,7 @@ import './globals.css'
 import { Providers } from '@/components/providers'
 import { ClerkProvider } from '@clerk/nextjs'
 import { dark } from '@clerk/themes'
+import { PageTransition } from '@/components/page-transition'
 
 const geistSans = Geist({
   subsets: ['latin'],
@@ -32,7 +33,9 @@ export default function RootLayout({
           className={`${geistSans.variable} ${geistMono.variable} font-sans`}
           suppressHydrationWarning
         >
-          <Providers>{children}</Providers>
+          <Providers>
+            <PageTransition>{children}</PageTransition>
+          </Providers>
         </body>
       </html>
     </ClerkProvider>

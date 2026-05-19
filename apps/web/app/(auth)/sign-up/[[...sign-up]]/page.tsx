@@ -108,7 +108,7 @@ export default function SignUpPage() {
       className="h-dvh flex flex-col overflow-hidden"
       style={{
         background:
-          'radial-gradient(ellipse at 30% 50%, #0d2d42 0%, #071828 20%, #040e1a 50%, #020810 100%)',
+          'radial-gradient(circle at 40% 40%, #091c29 0%, #04090f 80%)',
       }}
     >
       {/* TOP BAR */}
