@@ -105,14 +105,14 @@ export default function SignUpPage() {
 
   return (
     <div
-      className="h-screen flex flex-col overflow-hidden"
+      className="h-dvh flex flex-col overflow-hidden"
       style={{
         background:
           'radial-gradient(ellipse at 30% 50%, #0d2d42 0%, #071828 20%, #040e1a 50%, #020810 100%)',
       }}
     >
       {/* TOP BAR */}
-      <div className="flex items-center justify-between px-8 py-5 shrink-0">
+      <div className="flex items-center justify-between px-4 sm:px-8 py-4 sm:py-5 shrink-0">
         {/* Logo */}
         <div className="flex items-center gap-2">
           <FloLogo size={36} />
@@ -130,7 +130,7 @@ export default function SignUpPage() {
       </div>
 
       {/* MAIN CONTENT */}
-      <div className="flex flex-1 overflow-hidden gap-24">
+      <div className="flex flex-1 overflow-hidden gap-0 lg:gap-24">
         {/* LEFT SIDE */}
         <div className="hidden lg:flex flex-col justify-center items-end w-1/2 pb-10">
           <div className="max-w-lg">
@@ -281,9 +281,9 @@ export default function SignUpPage() {
         </div>
 
         {/* RIGHT SIDE */}
-        <div className="flex w-full lg:w-1/2 overflow-y-auto">
-          <div className="flex flex-col justify-center py-6 px-8 w-full max-w-lg">
-            <h2 className="text-3xl font-bold text-white mb-1">
+        <div className="flex w-full lg:w-1/2 overflow-y-auto justify-center lg:justify-start">
+          <div className="flex flex-col justify-center py-6 px-4 sm:px-8 w-full max-w-lg mx-auto lg:mx-0">
+            <h2 className="text-2xl sm:text-3xl font-bold text-white mb-1">
               Create your account
             </h2>
             <p className="text-[#8b949e] text-sm mb-6">
