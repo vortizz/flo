@@ -12,13 +12,13 @@ import { AppModule } from './app.module'
 async function bootstrap() {
   const app = await NestFactory.create<NestFastifyApplication>(
     AppModule,
-    new FastifyAdapter(),
+    new FastifyAdapter({ logger: false }),
+    { rawBody: true },
   )
 
   await app.register(fastifyHelmet)
   await app.register(fastifyCookie)
 
-  // Auto validate all incoming requests
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
@@ -27,13 +27,11 @@ async function bootstrap() {
     }),
   )
 
-  // Config service
   const configService = app.get(ConfigService)
   const port = configService.get<number>('app.port') || 4000
   const corsOrigin =
     configService.get<string>('app.corsOrigin') || 'http://localhost:3000'
 
-  // CORS
   app.enableCors({
     origin: corsOrigin,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
