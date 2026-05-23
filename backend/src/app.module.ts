@@ -1,11 +1,12 @@
 import { Module } from '@nestjs/common'
 import { ConfigModule } from '@nestjs/config'
+import { APP_GUARD } from '@nestjs/core'
 import { AppController } from './app.controller'
 import { PrismaModule } from './prisma.module'
-import appConfig from './config/app.config'
 import { AuthModule } from './modules/auth/auth.module'
-import { APP_GUARD } from '@nestjs/core'
 import { ClerkAuthGuard } from './modules/auth/clerk.guard'
+import { UsersModule } from './modules/users/users.module'
+import appConfig from './config/app.config'
 
 @Module({
   imports: [
@@ -15,6 +16,7 @@ import { ClerkAuthGuard } from './modules/auth/clerk.guard'
     }),
     PrismaModule,
     AuthModule,
+    UsersModule,
   ],
   controllers: [AppController],
   providers: [
