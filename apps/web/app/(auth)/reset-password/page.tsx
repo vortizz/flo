@@ -1,13 +1,13 @@
 'use client'
 
 import { useSignIn } from '@clerk/nextjs/legacy'
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, Suspense } from 'react'
 import Link from 'next/link'
 import { ArrowLeft, Eye, EyeOff } from 'lucide-react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { FloLogo } from '@/components/logo'
 
-export default function ResetPasswordPage() {
+function ResetPasswordContent() {
   const { signIn, isLoaded, setActive } = useSignIn()
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -357,5 +357,22 @@ export default function ResetPasswordPage() {
         </Link>
       </div>
     </div>
+  )
+}
+
+export default function ResetPasswordPage() {
+  return (
+    <Suspense
+      fallback={
+        <div
+          className="h-screen flex items-center justify-center"
+          style={{ background: '#020810' }}
+        >
+          <div className="w-6 h-6 border-2 border-[#00C896]/30 border-t-[#00C896] rounded-full animate-spin" />
+        </div>
+      }
+    >
+      <ResetPasswordContent />
+    </Suspense>
   )
 }
