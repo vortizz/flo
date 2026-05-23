@@ -68,8 +68,15 @@ export default function SignInPage() {
         router.push('/dashboard')
       }
     } catch (err: unknown) {
-      const error = err as { errors?: Array<{ message: string }> }
-      setError(error.errors?.[0]?.message || 'Invalid email or password')
+      const error = err as { errors?: Array<{ code: string; message: string }> }
+      const code = error.errors?.[0]?.code
+      if (code === 'strategy_for_user_invalid') {
+        setError(
+          'This account was created using a social login. Please use the same method you signed up with.',
+        )
+      } else {
+        setError(error.errors?.[0]?.message || 'Invalid email or password')
+      }
     } finally {
       setIsLoading(false)
     }
