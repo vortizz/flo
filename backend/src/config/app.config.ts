@@ -6,4 +6,6 @@ export default registerAs('app', () => ({
   nodeEnv: process.env.NODE_ENV || 'development',
   clerkSecretKey: process.env.CLERK_SECRET_KEY,
   clerkWebhookSecret: process.env.CLERK_WEBHOOK_SECRET,
+  basiqApiKey: process.env.BASIQ_API_KEY,
+  basiqBaseUrl: process.env.BASIQ_BASE_URL || 'https://au-api.basiq.io',
 }))
