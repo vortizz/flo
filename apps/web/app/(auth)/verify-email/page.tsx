@@ -72,7 +72,7 @@ export default function VerifyEmailPage() {
       if (result.status === 'complete') {
         await setActive({ session: result.createdSessionId })
         setIsSuccess(true)
-        setTimeout(() => router.push('/dashboard'), 1000)
+        setTimeout(() => router.push('/onboarding'), 1000)
       }
     } catch (err: unknown) {
       const error = err as { errors?: Array<{ long_message: string }> }
@@ -176,7 +176,7 @@ export default function VerifyEmailPage() {
           </h1>
           <p className="text-[#8b949e] text-sm text-center mb-8">
             {isSuccess ? (
-              'Redirecting you to your dashboard...'
+              'Redirecting you to onboarding...'
             ) : (
               <>
                 We sent a 6-digit code to
@@ -234,7 +234,7 @@ export default function VerifyEmailPage() {
 
               {/* Resend */}
               <p className="text-sm text-[#8b949e] mb-2">
-                Didn't receive a code?{' '}
+                Didn&apos;t receive a code?{' '}
                 {resendCooldown > 0 ? (
                   <span className="text-[#4a6070]">
                     Resend in {resendCooldown}s

@@ -12,6 +12,7 @@ export class UsersService {
     email: string
     fullName: string
     avatarUrl?: string
+    mobile?: string
   }) {
     try {
       const user = await this.prisma.user.upsert({
@@ -22,6 +23,7 @@ export class UsersService {
           email: data.email,
           fullName: data.fullName,
           avatarUrl: data.avatarUrl,
+          mobile: data.mobile,
         },
       })
       this.logger.log(`User created/found: ${user.id}`)
@@ -35,6 +37,28 @@ export class UsersService {
   async findByClerkId(clerkId: string) {
     return this.prisma.user.findUnique({
       where: { clerkId },
+    })
+  }
+
+  async updateUser(
+    clerkId: string,
+    data: Partial<{
+      fullName: string
+      avatarUrl: string
+      mobile: string
+      onboardingCompleted: boolean
+    }>,
+  ) {
+    return this.prisma.user.update({
+      where: { clerkId },
+      data,
+    })
+  }
+
+  async updateMobile(clerkId: string, mobile: string) {
+    return this.prisma.user.update({
+      where: { clerkId },
+      data: { mobile },
     })
   }
 }

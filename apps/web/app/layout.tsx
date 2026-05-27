@@ -1,19 +1,23 @@
 import type { Metadata } from 'next'
-import { Geist, Geist_Mono } from 'next/font/google'
+import { Inter } from 'next/font/google'
 import './globals.css'
 import { Providers } from '@/components/providers'
 import { ClerkProvider } from '@clerk/nextjs'
 import { dark } from '@clerk/themes'
 import { PageTransition } from '@/components/page-transition'
 
-const geistSans = Geist({
-  subsets: ['latin'],
-  variable: '--font-geist-sans',
-})
+// const geistSans = Geist({
+//   subsets: ['latin'],
+//   variable: '--font-geist-sans',
+// })
 
-const geistMono = Geist_Mono({
+// const geistMono = Geist_Mono({
+//   subsets: ['latin'],
+//   variable: '--font-geist-mono',
+// })
+
+const inter = Inter({
   subsets: ['latin'],
-  variable: '--font-geist-mono',
 })
 
 export const metadata: Metadata = {
@@ -28,9 +32,9 @@ export default function RootLayout({
 }) {
   return (
     <ClerkProvider appearance={{ baseTheme: dark }}>
-      <html lang="en" className="dark">
+      <html lang="en" className={`${inter.className} dark`}>
         <body
-          className={`${geistSans.variable} ${geistMono.variable} font-sans`}
+          // className={`${geistSans.variable} ${geistMono.variable} font-sans`}
           suppressHydrationWarning
         >
           <Providers>
