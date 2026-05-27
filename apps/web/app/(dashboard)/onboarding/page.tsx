@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { ArrowRight, CheckCircle, Info } from 'lucide-react'
 import { FloLogo } from '@/components/logo'
@@ -20,7 +20,7 @@ const STEPS = [
   { number: 5, label: 'Sync' },
 ]
 
-export default function OnboardingPage() {
+function OnboardingContent() {
   const router = useRouter()
   const { getToken, isLoaded } = useAuth()
   const searchParams = useSearchParams()
@@ -82,7 +82,10 @@ export default function OnboardingPage() {
     async function checkOnboardingStatus() {
       try {
         const token = await getToken()
-        if (!token) return
+        if (!token) {
+          setIsCheckingStatus(false)
+          return
+        }
 
         const response = await fetch(
           `${process.env.NEXT_PUBLIC_API_URL}/api/users/me`,
@@ -91,16 +94,21 @@ export default function OnboardingPage() {
           },
         )
 
-        if (!response.ok) return
+        if (!response.ok) {
+          setIsCheckingStatus(false)
+          return
+        }
+
         const user = await response.json()
 
         if (user.onboardingCompleted) {
           router.replace('/dashboard')
+          return
         }
       } catch (error) {
-        setIsCheckingStatus(false)
         console.error('Failed to check onboarding status:', error)
       }
+      setIsCheckingStatus(false)
     }
     checkOnboardingStatus()
   }, [isLoaded, getToken, router])
@@ -186,7 +194,7 @@ export default function OnboardingPage() {
 
       {/* MAIN CONTENT */}
       <div className="flex flex-1 items-start justify-center px-8 py-6 gap-12 max-w-6xl mx-auto w-full">
-        {/* LEFT PANEL — same across all steps */}
+        {/* LEFT PANEL */}
         <div className="hidden lg:flex flex-col justify-start max-w-sm pt-4">
           <div>
             <h1 className="text-4xl font-bold text-white leading-tight mb-4">
@@ -245,8 +253,8 @@ export default function OnboardingPage() {
             </div>
           </div>
         </div>
-        {currentStep}
-        {/* RIGHT SIDE — step content */}
+
+        {/* RIGHT SIDE */}
         {currentStep === 1 && (
           <StepSelect
             banks={banks}
@@ -299,5 +307,13 @@ export default function OnboardingPage() {
         </p>
       </div>
     </div>
+  )
+}
+
+export default function OnboardingPage() {
+  return (
+    <Suspense>
+      <OnboardingContent />
+    </Suspense>
   )
 }
