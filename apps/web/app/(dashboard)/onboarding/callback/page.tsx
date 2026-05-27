@@ -1,14 +1,18 @@
 'use client'
 
-import { useEffect } from 'react'
+import { Suspense, useEffect, useRef } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Loader2 } from 'lucide-react'
 
-export default function OnboardingCallbackPage() {
+function CallbackHandler() {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const hasRun = useRef(false)
 
   useEffect(() => {
+    if (hasRun.current) return
+    hasRun.current = true
+
     const jobId = searchParams.get('jobId')
     const jobIds = searchParams.get('jobIds')
     const rawState = searchParams.get('state')
@@ -26,7 +30,6 @@ export default function OnboardingCallbackPage() {
       }
     }
 
-    // Store job IDs
     const existing = JSON.parse(sessionStorage.getItem('basiqJobIds') ?? '[]')
     if (jobId || jobIds) {
       existing.push({ jobId, jobIds, bankIndex })
@@ -57,5 +60,13 @@ export default function OnboardingCallbackPage() {
         </p>
       </div>
     </div>
+  )
+}
+
+export default function OnboardingCallbackPage() {
+  return (
+    <Suspense>
+      <CallbackHandler />
+    </Suspense>
   )
 }
