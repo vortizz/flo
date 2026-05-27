@@ -38,6 +38,7 @@ model Transaction {
   id          String          @id @default(cuid())
   accountId   String
   account     Account         @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  basiqId     String?         @unique
   amount      Decimal         @db.Decimal(12, 2)
   type        TransactionType
   merchant    String

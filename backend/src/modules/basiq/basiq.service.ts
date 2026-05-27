@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
+import { SourceType, TransactionType } from '@prisma/client'
 import axios, { AxiosInstance } from 'axios'
 
 @Injectable()
@@ -125,22 +126,42 @@ export class BasiqService {
     }
   }
 
-  // Get transactions for a Basiq user
   async getTransactions(basiqUserId: string, fromDate?: string) {
     const token = await this.getAccessToken()
 
     try {
-      const params: Record<string, string> = {}
-      if (fromDate) params['filter[from.date]'] = fromDate
+      const allTransactions: any[] = []
+      const date =
+        fromDate ??
+        new Date(Date.now() - 90 * 24 * 60 * 60 * 1000)
+          .toISOString()
+          .split('T')[0]
 
-      const response = await this.axiosInstance.get(
-        `/users/${basiqUserId}/transactions`,
-        {
+      let url: string | null =
+        `/users/${basiqUserId}/transactions?filter=transaction.postDate.gteq('${date}')&limit=500`
+
+      while (url) {
+        const response = await this.axiosInstance.get(url, {
           headers: { Authorization: `Bearer ${token}` },
-          params,
-        },
+        })
+
+        const data = response.data.data ?? []
+        allTransactions.push(...data)
+
+        // Follow pagination
+        const next = response.data.links?.next
+        if (next) {
+          // Extract relative path from full URL
+          url = next.replace('https://au-api.basiq.io', '')
+        } else {
+          url = null
+        }
+      }
+
+      this.logger.log(
+        `Fetched ${allTransactions.length} transactions for user ${basiqUserId}`,
       )
-      return response.data.data
+      return allTransactions
     } catch (error) {
       this.logger.error(`Failed to get transactions: ${error}`)
       throw error
@@ -174,6 +195,38 @@ export class BasiqService {
     } catch (error) {
       this.logger.error(`Failed to sync accounts: ${error}`)
       throw error
+    }
+  }
+
+  normaliseTransaction(tx: any, accountId: string) {
+    const merchant =
+      tx.enrich?.merchant?.businessName ??
+      tx.enrich?.cleanDescription ??
+      tx.description ??
+      'Unknown'
+
+    const category = tx.enrich?.category?.anzsic?.class?.title ?? null
+
+    const date = tx.transactionDate
+      ? new Date(tx.transactionDate)
+      : new Date(tx.postDate)
+
+    const type: TransactionType =
+      tx.direction === 'credit' ? TransactionType.CREDIT : TransactionType.DEBIT
+
+    const amount = Math.abs(parseFloat(tx.amount))
+
+    return {
+      basiqId: tx.id,
+      accountId,
+      amount,
+      type,
+      merchant,
+      category,
+      description: tx.description ?? null,
+      date,
+      raw: tx,
+      source: SourceType.BASIQ,
     }
   }
 }
