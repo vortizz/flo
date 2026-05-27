@@ -25,6 +25,7 @@ export function StepSync({ onBack }: StepSyncProps) {
     { title: 'Verifying connection', status: 'pending' },
     { title: 'Retrieving accounts', status: 'pending' },
     { title: 'Fetching transactions', status: 'pending' },
+    { title: 'Importing to Flo', status: 'pending' },
   ])
   const [error, setError] = useState<string | null>(null)
   const [isDone, setIsDone] = useState(false)
@@ -64,7 +65,6 @@ export function StepSync({ onBack }: StepSyncProps) {
           ),
         )
 
-        // Map Basiq job steps to our UI steps
         const allSteps = results.flatMap((job: any) => job.steps ?? [])
 
         const verifyStep = allSteps.find((s: any) =>
@@ -92,6 +92,7 @@ export function StepSync({ onBack }: StepSyncProps) {
             title: 'Fetching transactions',
             status: mapStatus(transactionStep),
           },
+          { title: 'Importing to Flo', status: 'pending' },
         ])
 
         const anyFailed = allSteps.some((s: any) => s.status === 'failed')
@@ -100,16 +101,33 @@ export function StepSync({ onBack }: StepSyncProps) {
           return
         }
 
-        const allSuccess = results.every((job: any) =>
-          job.steps?.every((s: any) => s.status === 'success'),
-        )
+        // Check if all Basiq steps (verify, accounts, transactions) are done
+        const basiqStepsDone =
+          allSteps.length > 0 &&
+          allSteps.every(
+            (s: any) => s.status === 'success' || s.status === 'completed',
+          )
 
-        if (allSuccess) {
-          // Trigger account sync
+        if (basiqStepsDone) {
+          setJobSteps([
+            { title: 'Verifying connection', status: 'success' },
+            { title: 'Retrieving accounts', status: 'success' },
+            { title: 'Fetching transactions', status: 'success' },
+            { title: 'Importing to Flo', status: 'in-progress' },
+          ])
+
           await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/basiq/sync`, {
             method: 'POST',
             headers: { Authorization: `Bearer ${token}` },
           })
+
+          setJobSteps([
+            { title: 'Verifying connection', status: 'success' },
+            { title: 'Retrieving accounts', status: 'success' },
+            { title: 'Fetching transactions', status: 'success' },
+            { title: 'Importing to Flo', status: 'success' },
+          ])
+
           sessionStorage.removeItem('basiqJobIds')
           setIsDone(true)
           setTimeout(() => router.push('/dashboard'), 2000)
