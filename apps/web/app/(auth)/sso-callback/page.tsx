@@ -6,7 +6,7 @@ export default function SSOCallbackPage() {
   return (
     <AuthenticateWithRedirectCallback
       signUpForceRedirectUrl="/onboarding"
-      signInForceRedirectUrl="/dashboard"
+      signInForceRedirectUrl="/onboarding"
     />
   )
 }

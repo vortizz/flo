@@ -7,12 +7,15 @@ import {
   BadRequestException,
   Get,
   Param,
+  Logger,
 } from '@nestjs/common'
 import { BasiqService } from './basiq.service'
 import { PrismaService } from '../../prisma.service'
 
 @Controller('basiq')
 export class BasiqController {
+  private readonly logger = new Logger(BasiqController.name)
+
   constructor(
     private basiqService: BasiqService,
     private prisma: PrismaService,
@@ -37,7 +40,11 @@ export class BasiqController {
     }
 
     if (!user.basiqUserId) {
-      const basiqUserId = await this.basiqService.createUser(user.email)
+      const basiqUserId = await this.basiqService.createUser(
+        user.email,
+        user.mobile,
+        user.fullName?.split(' ')?.[0] ?? '',
+      )
       user = await this.prisma.user.update({
         where: { clerkId },
         data: { basiqUserId },
@@ -68,9 +75,27 @@ export class BasiqController {
     if (!user) throw new NotFoundException('User not found')
     if (!user.basiqUserId) throw new BadRequestException('No Basiq user found')
 
-    const accounts = await this.basiqService.syncAccounts(user.basiqUserId)
+    let accounts: any[] = []
+    for (let attempt = 1; attempt <= 5; attempt++) {
+      accounts = await this.basiqService.syncAccounts(user.basiqUserId)
+      this.logger.log(`Sync attempt ${attempt}: ${accounts.length} accounts`)
 
-    // Upsert accounts into Flo's DB
+      if (accounts.length > 0) break
+
+      if (attempt < 5) {
+        await new Promise(resolve => setTimeout(resolve, 3000 * attempt))
+      }
+    }
+
+    if (accounts.length === 0) {
+      this.logger.warn(`No accounts found after 5 attempts for user ${user.id}`)
+      await this.prisma.user.update({
+        where: { clerkId },
+        data: { onboardingCompleted: true },
+      })
+      return { synced: 0 }
+    }
+
     for (const account of accounts) {
       await this.prisma.account.upsert({
         where: { basiqId: account.id },

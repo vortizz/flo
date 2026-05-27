@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Loader2, AlertCircle } from 'lucide-react'
 import { useAuth } from '@clerk/nextjs'
 import type { Institution } from '@/types/institution'
@@ -21,9 +21,13 @@ export function StepConnect({
   const { getToken } = useAuth()
   const [error, setError] = useState<string | null>(null)
   const [currentBankIndex] = useState(initialBankIndex)
+  const hasRedirected = useRef(false)
 
   useEffect(() => {
     async function redirect() {
+      if (hasRedirected.current) return
+      hasRedirected.current = true
+
       try {
         const token = await getToken()
 
@@ -49,6 +53,8 @@ export function StepConnect({
       } catch (err) {
         console.error('Failed to get auth link:', err)
         setError('Something went wrong. Please try again.')
+      } finally {
+        hasRedirected.current = false
       }
     }
 
@@ -63,7 +69,10 @@ export function StepConnect({
         <AlertCircle size={32} className="text-red-400" />
         <p className="text-white font-medium text-sm">{error}</p>
         <button
-          onClick={onBack}
+          onClick={() => {
+            sessionStorage.removeItem('basiqJobIds')
+            onBack()
+          }}
           className="border border-[#1e2d3d] hover:border-[#4a6070] text-[#8b949e] hover:text-white font-medium py-2.5 px-6 rounded-xl transition-colors text-sm"
         >
           Go Back

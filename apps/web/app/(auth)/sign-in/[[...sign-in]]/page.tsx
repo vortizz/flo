@@ -1,6 +1,6 @@
 'use client'
 
-import { useSignIn } from '@clerk/nextjs/legacy'
+import { useSignIn, useSignUp } from '@clerk/nextjs/legacy'
 import { useState } from 'react'
 import Link from 'next/link'
 import { Eye, EyeOff, Fingerprint } from 'lucide-react'
@@ -10,6 +10,7 @@ import { FloLogo } from '@/components/logo'
 
 export default function SignInPage() {
   const { signIn, isLoaded, setActive } = useSignIn()
+  const { isLoaded: isLoadedSignUp, signUp } = useSignUp()
   const router = useRouter()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -21,13 +22,13 @@ export default function SignInPage() {
   )
 
   const handleGoogleSignIn = async () => {
-    if (!signIn) return
+    if (!isLoadedSignUp) return
     setOauthLoading('google')
     try {
-      await signIn.authenticateWithRedirect({
+      await signUp.authenticateWithRedirect({
         strategy: 'oauth_google',
         redirectUrl: `${window.location.origin}/sso-callback`,
-        redirectUrlComplete: '/dashboard',
+        redirectUrlComplete: '/onboarding',
       })
     } catch (err: unknown) {
       const error = err as { errors?: Array<{ message: string }> }
@@ -37,13 +38,13 @@ export default function SignInPage() {
   }
 
   const handleAppleSignIn = async () => {
-    if (!signIn) return
+    if (!isLoadedSignUp) return
     setOauthLoading('apple')
     try {
-      await signIn.authenticateWithRedirect({
+      await signUp.authenticateWithRedirect({
         strategy: 'oauth_apple',
         redirectUrl: `${window.location.origin}/sso-callback`,
-        redirectUrlComplete: '/dashboard',
+        redirectUrlComplete: '/onboarding',
       })
     } catch (err: unknown) {
       const error = err as { errors?: Array<{ message: string }> }
