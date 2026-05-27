@@ -42,6 +42,14 @@ function OnboardingContent() {
   )
 
   useEffect(() => {
+    const handleUnload = () => {
+      sessionStorage.removeItem('basiqJobIds')
+    }
+    window.addEventListener('beforeunload', handleUnload)
+    return () => window.removeEventListener('beforeunload', handleUnload)
+  }, [])
+
+  useEffect(() => {
     const step = searchParams.get('step')
     if (step === '4' || step === '5') {
       window.history.replaceState({}, '', '/onboarding')
@@ -101,7 +109,7 @@ function OnboardingContent() {
 
         const user = await response.json()
 
-        if (user.onboardingCompleted) {
+        if (user?.onboardingCompleted) {
           router.replace('/dashboard')
           return
         }
@@ -121,6 +129,7 @@ function OnboardingContent() {
 
   const handleSkip = async () => {
     const token = await getToken()
+    sessionStorage.removeItem('basiqJobIds')
     await fetch(
       `${process.env.NEXT_PUBLIC_API_URL}/api/users/skip-onboarding`,
       {
@@ -286,7 +295,14 @@ function OnboardingContent() {
             onBack={() => setCurrentStep(3)}
           />
         )}
-        {currentStep === 5 && <StepSync onBack={() => setCurrentStep(4)} />}
+        {currentStep === 5 && (
+          <StepSync
+            onBack={() => {
+              sessionStorage.removeItem('basiqJobIds')
+              setCurrentStep(4)
+            }}
+          />
+        )}
       </div>
 
       {/* FOOTER */}

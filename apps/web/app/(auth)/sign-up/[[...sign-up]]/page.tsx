@@ -1,6 +1,6 @@
 'use client'
 
-import { useSignUp, useSignIn } from '@clerk/nextjs/legacy'
+import { useSignUp } from '@clerk/nextjs/legacy'
 import { useState } from 'react'
 import Link from 'next/link'
 import { Eye, EyeOff, ArrowLeft, Globe } from 'lucide-react'
@@ -10,7 +10,6 @@ import { FloLogo } from '@/components/logo'
 
 export default function SignUpPage() {
   const { isLoaded: isLoadedSignUp, signUp } = useSignUp()
-  const { isLoaded: isLoadedSignIn, signIn } = useSignIn()
   const router = useRouter()
   const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
@@ -47,13 +46,13 @@ export default function SignUpPage() {
   const isValidForm = isEmailValid && strength.score === 4 && agreedToTerms
 
   const handleGoogleSignUp = async () => {
-    if (!isLoadedSignIn) return
+    if (!isLoadedSignUp) return
     setOauthLoading('google')
     try {
-      await signIn.authenticateWithRedirect({
+      await signUp.authenticateWithRedirect({
         strategy: 'oauth_google',
         redirectUrl: `${window.location.origin}/sso-callback`,
-        redirectUrlComplete: '/dashboard',
+        redirectUrlComplete: '/onboarding',
       })
     } catch (err: unknown) {
       const error = err as { errors?: Array<{ message: string }> }
@@ -64,13 +63,13 @@ export default function SignUpPage() {
   }
 
   const handleAppleSignUp = async () => {
-    if (!isLoadedSignIn) return
+    if (!isLoadedSignUp) return
     setOauthLoading('apple')
     try {
-      await signIn.authenticateWithRedirect({
+      await signUp.authenticateWithRedirect({
         strategy: 'oauth_apple',
         redirectUrl: `${window.location.origin}/sso-callback`,
-        redirectUrlComplete: '/dashboard',
+        redirectUrlComplete: '/onboarding',
       })
     } catch (err: unknown) {
       const error = err as { errors?: Array<{ message: string }> }
@@ -294,7 +293,7 @@ export default function SignUpPage() {
             <div className="space-y-3 mb-5">
               <button
                 onClick={handleGoogleSignUp}
-                disabled={!isLoadedSignIn || !!oauthLoading}
+                disabled={!isLoadedSignUp || !!oauthLoading}
                 className="w-full flex items-center justify-center gap-3 bg-[#0d1f2d] hover:bg-[#112333] border border-[#1a2d3d] hover:border-[#2a3d4d] text-white text-sm font-medium py-3 rounded-xl transition-all duration-200 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {oauthLoading === 'google' ? (
@@ -307,7 +306,7 @@ export default function SignUpPage() {
 
               <button
                 onClick={handleAppleSignUp}
-                disabled={!isLoadedSignIn || !!oauthLoading}
+                disabled={!isLoadedSignUp || !!oauthLoading}
                 className="w-full flex items-center justify-center gap-3 bg-[#0d1f2d] hover:bg-[#112333] border border-[#1a2d3d] hover:border-[#2a3d4d] text-white text-sm font-medium py-3 rounded-xl transition-all duration-200 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {oauthLoading === 'apple' ? (

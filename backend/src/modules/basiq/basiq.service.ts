@@ -63,13 +63,17 @@ export class BasiqService {
   }
 
   // Create a Basiq user for a Flo user
-  async createUser(email: string): Promise<string> {
+  async createUser(
+    email: string,
+    mobile: string,
+    firstName: string,
+  ): Promise<string> {
     const token = await this.getAccessToken()
 
     try {
       const response = await this.axiosInstance.post(
         '/users',
-        { email },
+        { email, mobile, firstName },
         {
           headers: { Authorization: `Bearer ${token}` },
         },
@@ -121,24 +125,6 @@ export class BasiqService {
     }
   }
 
-  // Get all accounts for a Basiq user
-  async getAccounts(basiqUserId: string) {
-    const token = await this.getAccessToken()
-
-    try {
-      const response = await this.axiosInstance.get(
-        `/users/${basiqUserId}/accounts`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        },
-      )
-      return response.data.data
-    } catch (error) {
-      this.logger.error(`Failed to get accounts: ${error}`)
-      throw error
-    }
-  }
-
   // Get transactions for a Basiq user
   async getTransactions(basiqUserId: string, fromDate?: string) {
     const token = await this.getAccessToken()
@@ -183,6 +169,7 @@ export class BasiqService {
         `/users/${basiqUserId}/accounts`,
         { headers: { Authorization: `Bearer ${token}` } },
       )
+      this.logger.log(`Accounts response: ${JSON.stringify(response.data)}`)
       return response.data.data
     } catch (error) {
       this.logger.error(`Failed to sync accounts: ${error}`)
