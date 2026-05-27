@@ -78,26 +78,43 @@ export class BasiqService {
       this.logger.log(`Basiq user created: ${response.data.id}`)
       return response.data.id
     } catch (error) {
+      if (axios.isAxiosError(error) && error.response?.status === 409) {
+        this.logger.log(`Basiq user already exists for ${email}, reusing ID`)
+        const existingId = error.response.data?.data?.[0]?.id
+        if (existingId) return existingId
+      }
       this.logger.error(`Failed to create Basiq user: ${error}`)
       throw error
     }
   }
 
-  // Generate a consent URL for connecting a bank
-  async createAuthLink(basiqUserId: string, mobile?: string): Promise<string> {
+  async createAuthLink(
+    basiqUserId: string,
+    mobile: string,
+    institutionId?: string,
+    bankIndex?: number,
+    total?: number,
+  ): Promise<string> {
     const token = await this.getAccessToken()
 
     try {
       const response = await this.axiosInstance.post(
         `/users/${basiqUserId}/auth_link`,
-        mobile ? { mobile } : {},
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        },
+        { mobile },
+        { headers: { Authorization: `Bearer ${token}` } },
+      )
+
+      const url: string = response.data.links.public
+
+      const params = new URLSearchParams()
+      if (institutionId) params.append('institutionId', institutionId)
+      params.append(
+        'state',
+        JSON.stringify({ bankIndex: bankIndex ?? 0, total: total ?? 1 }),
       )
 
       this.logger.log(`Auth link created for user: ${basiqUserId}`)
-      return response.data.links.public
+      return `${url}?${params.toString()}`
     } catch (error) {
       this.logger.error(`Failed to create auth link: ${error}`)
       throw error
@@ -140,6 +157,35 @@ export class BasiqService {
       return response.data.data
     } catch (error) {
       this.logger.error(`Failed to get transactions: ${error}`)
+      throw error
+    }
+  }
+
+  async getJob(jobId: string) {
+    const token = await this.getAccessToken()
+
+    try {
+      const response = await this.axiosInstance.get(`/jobs/${jobId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      return response.data
+    } catch (error) {
+      this.logger.error(`Failed to get job: ${error}`)
+      throw error
+    }
+  }
+
+  async syncAccounts(basiqUserId: string) {
+    const token = await this.getAccessToken()
+
+    try {
+      const response = await this.axiosInstance.get(
+        `/users/${basiqUserId}/accounts`,
+        { headers: { Authorization: `Bearer ${token}` } },
+      )
+      return response.data.data
+    } catch (error) {
+      this.logger.error(`Failed to sync accounts: ${error}`)
       throw error
     }
   }

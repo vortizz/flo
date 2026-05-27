@@ -26,6 +26,11 @@ interface ClerkUserCreatedEvent {
     first_name: string | null
     last_name: string | null
     image_url: string | null
+    phone_numbers: Array<{
+      phone_number: string
+      id: string
+    }>
+    primary_phone_number_id: string | null
   }
 }
 
@@ -83,6 +88,8 @@ export class UsersController {
         first_name,
         last_name,
         image_url,
+        phone_numbers,
+        primary_phone_number_id,
       } = event.data
 
       const primaryEmail = email_addresses.find(
@@ -93,6 +100,10 @@ export class UsersController {
         throw new BadRequestException('No primary email found')
       }
 
+      const primaryPhone = phone_numbers?.find(
+        p => p.id === primary_phone_number_id,
+      )
+
       const fullName =
         [first_name, last_name].filter(Boolean).join(' ') || 'Flo User'
 
@@ -101,10 +112,35 @@ export class UsersController {
         email: primaryEmail.email_address,
         fullName,
         avatarUrl: image_url || undefined,
+        mobile: primaryPhone?.phone_number || undefined,
       })
 
       this.logger.log(`User created from webhook: ${id}`)
     }
+
+    // if (event.type === 'user.updated') {
+    //   const {
+    //     id,
+    //     first_name,
+    //     last_name,
+    //     image_url,
+    //     phone_numbers,
+    //     primary_phone_number_id,
+    //   } = event.data
+
+    //   const primaryPhone = phone_numbers?.find(
+    //     p => p.id === primary_phone_number_id,
+    //   )
+
+    //   await this.usersService.updateUser(id, {
+    //     fullName:
+    //       [first_name, last_name].filter(Boolean).join(' ') || undefined,
+    //     avatarUrl: image_url || undefined,
+    //     mobile: primaryPhone?.phone_number || undefined,
+    //   })
+
+    //   this.logger.log(`User updated from webhook: ${id}`)
+    // }
 
     return { received: true }
   }

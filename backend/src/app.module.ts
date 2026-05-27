@@ -7,6 +7,7 @@ import { AuthModule } from './modules/auth/auth.module'
 import { ClerkAuthGuard } from './modules/auth/clerk.guard'
 import { UsersModule } from './modules/users/users.module'
 import { BasiqModule } from './modules/basiq/basiq.module'
+import { InstitutionsModule } from './modules/institutions/institutions.module'
 import appConfig from './config/app.config'
 
 @Module({
@@ -19,6 +20,7 @@ import appConfig from './config/app.config'
     AuthModule,
     UsersModule,
     BasiqModule,
+    InstitutionsModule,
   ],
   controllers: [AppController],
   providers: [

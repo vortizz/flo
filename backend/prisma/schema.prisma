@@ -7,14 +7,17 @@ datasource db {
 }
 
 model User {
-  id        String    @id @default(cuid())
-  clerkId   String    @unique
-  email     String    @unique
-  fullName  String
-  avatarUrl String?
-  accounts  Account[]
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  id                  String    @id @default(cuid())
+  clerkId             String    @unique
+  email               String    @unique
+  fullName            String
+  avatarUrl           String?
+  mobile              String?
+  basiqUserId         String?   @unique
+  onboardingCompleted Boolean   @default(false)
+  accounts            Account[]
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
 }
 
 model Account {
@@ -45,6 +48,19 @@ model Transaction {
   raw         Json?
   createdAt   DateTime        @default(now())
   updatedAt   DateTime        @updatedAt
+}
+
+model Institution {
+  id              String   @id
+  name            String
+  shortName       String?
+  institutionType String?
+  country         String?
+  logoUrl         String?
+  isActive        Boolean  @default(true)
+  isPopular       Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 }
 
 enum TransactionType {
