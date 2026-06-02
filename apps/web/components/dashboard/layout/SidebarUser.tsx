@@ -1,6 +1,7 @@
 'use client'
 
 import { useUser } from '@clerk/nextjs'
+import { ChevronRightIcon } from 'lucide-react'
 import Image from 'next/image'
 
 export default function SidebarUser({
@@ -12,6 +13,7 @@ export default function SidebarUser({
 }) {
   const { user } = useUser()
   const name = user?.fullName ?? user?.firstName ?? 'User'
+  const email = user?.emailAddresses[0]?.emailAddress ?? ''
   const avatar = user?.imageUrl
 
   const avatarEl = (
@@ -46,14 +48,15 @@ export default function SidebarUser({
 
   return (
     <div
-      className="bg-linear-to-br from-[rgba(30,41,59,0.7)] to-[rgba(15,23,42,0.4)] backdrop-blur-md border border-white/5 shadow-[0_4px_24px_-1px_rgba(0,0,0,0.2)] rounded-xl p-4 flex items-center gap-3 cursor-pointer hover:border-[#00C896]/40 transition-colors"
+      className="flex items-center gap-2 p-3 rounded-xl bg-[#ffffff08] cursor-pointer border border-[#1a2d3d]"
       onClick={onClose}
     >
       {avatarEl}
       <div className="flex-1 overflow-hidden">
         <p className="text-sm font-medium text-white truncate">{name}</p>
-        <p className="text-xs text-[#8b949e]">Free Plan</p>
+        {/* <p className="text-[10px] text-[#8b949e] truncate">{email}</p> */}
       </div>
+      <ChevronRightIcon size={16} className="text-[#8b949e]" />
     </div>
   )
 }
