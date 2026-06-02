@@ -118,6 +118,7 @@ export class BasiqController {
       user.basiqUserId,
     )
     this.logger.log(`Fetched ${transactions.length} transactions`)
+    this.logger.debug(`Transactions: ${JSON.stringify(transactions[0])}`)
 
     let synced = 0
     for (const tx of transactions) {
