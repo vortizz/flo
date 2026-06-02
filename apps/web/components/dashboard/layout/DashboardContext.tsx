@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useState } from 'react'
 
-export type Period = 'This Month' | 'Last Month' | 'YTD' | 'Custom'
+export type Period = 'This Week' | 'This Fortnight' | 'This Month' | 'Custom'
 
 interface DashboardContextValue {
   period: Period
@@ -12,7 +12,7 @@ interface DashboardContextValue {
 const DashboardContext = createContext<DashboardContextValue | null>(null)
 
 export function DashboardProvider({ children }: { children: React.ReactNode }) {
-  const [period, setPeriod] = useState<Period>('This Month')
+  const [period, setPeriod] = useState<Period>('This Week')
   return (
     <DashboardContext.Provider value={{ period, setPeriod }}>
       {children}

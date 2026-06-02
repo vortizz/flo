@@ -9,6 +9,7 @@ import { UsersModule } from './modules/users/users.module'
 import { BasiqModule } from './modules/basiq/basiq.module'
 import { InstitutionsModule } from './modules/institutions/institutions.module'
 import appConfig from './config/app.config'
+import { DashboardModule } from './modules/dashboard/dashboard.module'
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import appConfig from './config/app.config'
     UsersModule,
     BasiqModule,
     InstitutionsModule,
+    DashboardModule,
   ],
   controllers: [AppController],
   providers: [

@@ -3,7 +3,12 @@
 import { Calendar, ChevronDown } from 'lucide-react'
 import { useDashboard, type Period } from './DashboardContext'
 
-const PERIODS: Period[] = ['This Month', 'Last Month', 'YTD', 'Custom']
+const PERIODS: Period[] = [
+  'This Week',
+  'This Fortnight',
+  'This Month',
+  'Custom',
+]
 
 export default function PeriodSelector() {
   const { period, setPeriod } = useDashboard()

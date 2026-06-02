@@ -1,0 +1,120 @@
+import { Injectable } from '@nestjs/common'
+import { Period } from './dto/get-summary.dto'
+import { PrismaService } from 'src/prisma.service'
+
+@Injectable()
+export class DashboardService {
+  constructor(private readonly prisma: PrismaService) {}
+
+  async getSummary(clerkId: string, period: Period) {
+    const user = await this.prisma.user.findUniqueOrThrow({
+      where: { clerkId },
+    })
+
+    const { current, previous } = this.getDateRanges(period)
+
+    const [currentTotals, previousTotals] = await Promise.all([
+      this.getTotalsForRange(user.id, current.from, current.to),
+      this.getTotalsForRange(user.id, previous.from, previous.to),
+    ])
+
+    return {
+      period,
+      current: currentTotals,
+      previous: previousTotals,
+      changes: {
+        income: this.percentChange(previousTotals.income, currentTotals.income),
+        expenses: this.percentChange(
+          previousTotals.expenses,
+          currentTotals.expenses,
+        ),
+        savings: this.percentChange(
+          previousTotals.savings,
+          currentTotals.savings,
+        ),
+      },
+    }
+  }
+
+  private async getTotalsForRange(userId: string, from: Date, to: Date) {
+    const transactions = await this.prisma.transaction.findMany({
+      where: {
+        account: { userId },
+        date: { gte: from, lte: to },
+      },
+      select: { amount: true, type: true },
+    })
+
+    const amounts = transactions.map(t => ({
+      amount: Number(t.amount),
+      type: t.type,
+    }))
+
+    const income = amounts
+      .filter(t => t.type === 'CREDIT')
+      .reduce((sum, t) => sum + t.amount, 0)
+
+    const expenses = amounts
+      .filter(t => t.type === 'DEBIT')
+      .reduce((sum, t) => sum + t.amount, 0)
+
+    return {
+      income: Math.round(income * 100) / 100,
+      expenses: Math.round(expenses * 100) / 100,
+      savings: Math.round((income - expenses) * 100) / 100,
+    }
+  }
+
+  private getDateRanges(period: Period) {
+    const now = new Date()
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+    const endOfDay = (d: Date) =>
+      new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999)
+    const addDays = (d: Date, n: number) =>
+      new Date(d.getFullYear(), d.getMonth(), d.getDate() + n)
+
+    let from: Date
+    let to: Date
+    let prevFrom: Date
+    let prevTo: Date
+
+    switch (period) {
+      case 'week':
+        const day = now.getDay() === 0 ? 6 : now.getDay() - 1
+        from = addDays(today, -day)
+        to = addDays(from, 6)
+        prevFrom = addDays(from, -7)
+        prevTo = addDays(from, -1)
+        break
+      case 'fortnight':
+        const day2 = now.getDay() === 0 ? 6 : now.getDay() - 1
+        from = addDays(today, -day2 - 7)
+        to = addDays(from, 13)
+        prevFrom = addDays(from, -14)
+        prevTo = addDays(from, -1)
+        break
+      case 'month':
+        from = new Date(now.getFullYear(), now.getMonth(), 1)
+        to = new Date(now.getFullYear(), now.getMonth() + 1, 0)
+        prevFrom = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+        prevTo = new Date(now.getFullYear(), now.getMonth(), 0)
+        break
+      case 'year':
+        from = new Date(now.getFullYear(), 0, 1)
+        to = new Date(now.getFullYear(), 11, 31)
+        prevFrom = new Date(now.getFullYear() - 1, 0, 1)
+        prevTo = new Date(now.getFullYear() - 1, 11, 31)
+        break
+    }
+
+    return {
+      current: { from, to: endOfDay(to) },
+      previous: { from: prevFrom, to: endOfDay(prevTo) },
+    }
+  }
+
+  private percentChange(previous: number, current: number): number {
+    if (previous === 0) return 0
+    return Math.round(((current - previous) / Math.abs(previous)) * 1000) / 10
+  }
+}
