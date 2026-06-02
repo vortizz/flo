@@ -10,4 +10,9 @@ export class DashboardController {
   getSummary(@Query() query: GetSummaryDto, @Request() req: any) {
     return this.dashboardService.getSummary(req.user.userId, query.period)
   }
+
+  @Get('chart')
+  getChart(@Query() query: GetSummaryDto, @Request() req: any) {
+    return this.dashboardService.getChart(req.user.userId, query.period)
+  }
 }

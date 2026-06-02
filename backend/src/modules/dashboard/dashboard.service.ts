@@ -117,4 +117,52 @@ export class DashboardService {
     if (previous === 0) return 0
     return Math.round(((current - previous) / Math.abs(previous)) * 1000) / 10
   }
+
+  async getChart(clerkId: string, period: Period) {
+    const user = await this.prisma.user.findUniqueOrThrow({
+      where: { clerkId },
+    })
+
+    const { current } = this.getDateRanges(period)
+
+    const transactions = await this.prisma.transaction.findMany({
+      where: {
+        account: { userId: user.id },
+        date: { gte: current.from, lte: current.to },
+      },
+      select: { amount: true, type: true, date: true },
+      orderBy: { date: 'asc' },
+    })
+
+    // Group by date
+    const byDate = new Map<string, { income: number; expenses: number }>()
+
+    for (const t of transactions) {
+      const key = t.date.toISOString().split('T')[0] // YYYY-MM-DD
+      if (!byDate.has(key)) byDate.set(key, { income: 0, expenses: 0 })
+      const entry = byDate.get(key)!
+      if (t.type === 'CREDIT') entry.income += Number(t.amount)
+      else entry.expenses += Number(t.amount)
+    }
+
+    // Fill in missing days with 0
+    const days = this.getDaysInRange(current.from, current.to)
+    const data = days.map(day => ({
+      date: day,
+      income: Math.round((byDate.get(day)?.income ?? 0) * 100) / 100,
+      expenses: Math.round((byDate.get(day)?.expenses ?? 0) * 100) / 100,
+    }))
+
+    return data
+  }
+
+  private getDaysInRange(from: Date, to: Date): string[] {
+    const days: string[] = []
+    const current = new Date(from)
+    while (current <= to) {
+      days.push(current.toISOString().split('T')[0])
+      current.setDate(current.getDate() + 1)
+    }
+    return days
+  }
 }
