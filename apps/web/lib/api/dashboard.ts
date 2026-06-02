@@ -17,6 +17,12 @@ export interface SummaryResponse {
   }
 }
 
+export interface ChartDataPoint {
+  date: string
+  income: number
+  expenses: number
+}
+
 export async function fetchSummary(
   period: Period,
   getToken: () => Promise<string | null>,
@@ -27,5 +33,18 @@ export async function fetchSummary(
     { headers: { Authorization: `Bearer ${token}` } },
   )
   if (!res.ok) throw new Error('Failed to fetch summary')
+  return res.json()
+}
+
+export async function fetchChart(
+  period: Period,
+  getToken: () => Promise<string | null>,
+): Promise<ChartDataPoint[]> {
+  const token = await getToken()
+  const res = await fetch(
+    `${process.env.NEXT_PUBLIC_API_URL}/api/dashboard/chart?period=${period}`,
+    { headers: { Authorization: `Bearer ${token}` } },
+  )
+  if (!res.ok) throw new Error('Failed to fetch chart data')
   return res.json()
 }
