@@ -23,6 +23,12 @@ export interface ChartDataPoint {
   expenses: number
 }
 
+export interface CategoryDataPoint {
+  category: string
+  amount: number
+  percentage: number
+}
+
 export async function fetchSummary(
   period: Period,
   getToken: () => Promise<string | null>,
@@ -46,5 +52,18 @@ export async function fetchChart(
     { headers: { Authorization: `Bearer ${token}` } },
   )
   if (!res.ok) throw new Error('Failed to fetch chart data')
+  return res.json()
+}
+
+export async function fetchCategories(
+  period: Period,
+  getToken: () => Promise<string | null>,
+): Promise<CategoryDataPoint[]> {
+  const token = await getToken()
+  const res = await fetch(
+    `${process.env.NEXT_PUBLIC_API_URL}/api/dashboard/categories?period=${period}`,
+    { headers: { Authorization: `Bearer ${token}` } },
+  )
+  if (!res.ok) throw new Error('Failed to fetch categories')
   return res.json()
 }

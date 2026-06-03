@@ -15,4 +15,9 @@ export class DashboardController {
   getChart(@Query() query: GetSummaryDto, @Request() req: any) {
     return this.dashboardService.getChart(req.user.userId, query.period)
   }
+
+  @Get('categories')
+  getCategories(@Query() query: GetSummaryDto, @Request() req: any) {
+    return this.dashboardService.getCategories(req.user.userId, query.period)
+  }
 }

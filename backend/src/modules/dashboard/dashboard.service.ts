@@ -165,4 +165,46 @@ export class DashboardService {
     }
     return days
   }
+
+  async getCategories(clerkId: string, period: Period) {
+    const user = await this.prisma.user.findUniqueOrThrow({
+      where: { clerkId },
+    })
+
+    const { current } = this.getDateRanges(period)
+
+    const transactions = await this.prisma.transaction.findMany({
+      where: {
+        account: { userId: user.id },
+        date: { gte: current.from, lte: current.to },
+        type: 'DEBIT',
+      },
+      select: { amount: true, category: true },
+    })
+
+    // Group by category
+    const byCategory = new Map<string, number>()
+    for (const t of transactions) {
+      const key = t.category ?? 'Other'
+      if (key === 'Unknown') continue
+      byCategory.set(key, (byCategory.get(key) ?? 0) + Number(t.amount))
+    }
+
+    // Sort by amount descending, take top 5, group rest as "Other"
+    const sorted = [...byCategory.entries()].sort((a, b) => b[1] - a[1])
+
+    const top5 = sorted.slice(0, 5)
+    const rest = sorted.slice(5)
+
+    const otherAmount = rest.reduce((sum, [, amount]) => sum + amount, 0)
+    if (otherAmount > 0) top5.push(['Other', otherAmount])
+
+    const total = top5.reduce((sum, [, amount]) => sum + amount, 0)
+
+    return top5.map(([category, amount]) => ({
+      category,
+      amount: Math.round(amount * 100) / 100,
+      percentage: Math.round((amount / total) * 1000) / 10,
+    }))
+  }
 }
