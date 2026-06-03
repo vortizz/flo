@@ -33,10 +33,15 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const searchParams = useSearchParams()
 
-  const rawPeriod = searchParams.get('period') as Period
-  const period: Period = VALID_PERIODS.includes(rawPeriod)
-    ? rawPeriod
-    : 'This Week'
+  const API_TO_PERIOD = Object.fromEntries(
+    Object.entries(PERIOD_MAP).map(([k, v]) => [v, k]),
+  ) as Record<ApiPeriod, Period>
+
+  const rawPeriod = searchParams.get('period') as ApiPeriod | null
+  const period: Period =
+    rawPeriod && rawPeriod in API_TO_PERIOD
+      ? API_TO_PERIOD[rawPeriod]
+      : 'This Week'
 
   const fromParam = searchParams.get('from')
   const toParam = searchParams.get('to')
@@ -51,7 +56,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
   const setPeriod = useCallback(
     (p: Period) => {
       const params = new URLSearchParams(searchParams.toString())
-      params.set('period', p)
+      params.set('period', PERIOD_MAP[p])
       if (p !== 'Custom') {
         params.delete('from')
         params.delete('to')
@@ -64,7 +69,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
   const setCustomRange = useCallback(
     (range: DateRange | undefined) => {
       const params = new URLSearchParams(searchParams.toString())
-      params.set('period', 'Custom')
+      params.set('period', 'custom')
       if (range?.from)
         params.set('from', range.from.toISOString().split('T')[0])
       if (range?.to) params.set('to', range.to.toISOString().split('T')[0])
