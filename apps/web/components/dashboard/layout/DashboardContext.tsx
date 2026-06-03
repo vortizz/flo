@@ -1,20 +1,82 @@
 'use client'
 
-import { createContext, useContext, useState } from 'react'
+import { createContext, useContext, useCallback } from 'react'
+import { useRouter, useSearchParams, usePathname } from 'next/navigation'
 
-export type Period = 'This Week' | 'This Fortnight' | 'This Month' | 'Custom'
+export const PERIOD_MAP = {
+  'This Week': 'week',
+  'This Fortnight': 'fortnight',
+  'This Month': 'month',
+  Custom: 'custom',
+} as const
+
+export type Period = keyof typeof PERIOD_MAP
+export type ApiPeriod = (typeof PERIOD_MAP)[Period]
+export const VALID_PERIODS = Object.keys(PERIOD_MAP) as Period[]
+
+export interface DateRange {
+  from: Date | undefined
+  to?: Date | undefined
+}
 
 interface DashboardContextValue {
   period: Period
   setPeriod: (p: Period) => void
+  customRange: DateRange | undefined
+  setCustomRange: (range: DateRange | undefined) => void
 }
 
 const DashboardContext = createContext<DashboardContextValue | null>(null)
 
 export function DashboardProvider({ children }: { children: React.ReactNode }) {
-  const [period, setPeriod] = useState<Period>('This Week')
+  const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+
+  const rawPeriod = searchParams.get('period') as Period
+  const period: Period = VALID_PERIODS.includes(rawPeriod)
+    ? rawPeriod
+    : 'This Week'
+
+  const fromParam = searchParams.get('from')
+  const toParam = searchParams.get('to')
+  const customRange: DateRange | undefined =
+    fromParam && toParam
+      ? {
+          from: new Date(fromParam + 'T00:00:00.000Z'),
+          to: new Date(toParam + 'T00:00:00.000Z'),
+        }
+      : undefined
+
+  const setPeriod = useCallback(
+    (p: Period) => {
+      const params = new URLSearchParams(searchParams.toString())
+      params.set('period', p)
+      if (p !== 'Custom') {
+        params.delete('from')
+        params.delete('to')
+      }
+      router.push(`${pathname}?${params.toString()}`)
+    },
+    [router, pathname, searchParams],
+  )
+
+  const setCustomRange = useCallback(
+    (range: DateRange | undefined) => {
+      const params = new URLSearchParams(searchParams.toString())
+      params.set('period', 'Custom')
+      if (range?.from)
+        params.set('from', range.from.toISOString().split('T')[0])
+      if (range?.to) params.set('to', range.to.toISOString().split('T')[0])
+      router.push(`${pathname}?${params.toString()}`)
+    },
+    [router, pathname, searchParams],
+  )
+
   return (
-    <DashboardContext.Provider value={{ period, setPeriod }}>
+    <DashboardContext.Provider
+      value={{ period, setPeriod, customRange, setCustomRange }}
+    >
       {children}
     </DashboardContext.Provider>
   )

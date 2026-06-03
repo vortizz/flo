@@ -11,11 +11,12 @@ export default function CashflowRatio({
   expenses,
   savings,
 }: CashflowRatioProps) {
-  if (income === 0) return null
+  if (income === 0 && expenses === 0) return null
 
-  const expensesPercent = Math.min(Math.round((expenses / income) * 100), 100)
-  const savingsPercent = Math.round((savings / income) * 100)
-  const incomePercent = 100 - expensesPercent
+  const total = income + expenses
+  const incomePercent = Math.round((income / total) * 100)
+  const expensesPercent = Math.round((expenses / total) * 100)
+  const savingsPercent = savings > 0 ? Math.round((savings / income) * 100) : 0
 
   return (
     <div className="bg-[#0d1f2d] border border-[#1a2d3d] rounded-xl p-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
@@ -51,7 +52,9 @@ export default function CashflowRatio({
         <span className="flex items-center gap-1.5">
           <span className="w-2.5 h-2.5 rounded-full bg-blue-400 inline-block" />
           Saved{' '}
-          <span className="font-medium text-white">{savingsPercent}%</span>
+          <span className="font-medium text-white">
+            {savingsPercent > 0 ? `${savingsPercent}%` : '-'}
+          </span>
         </span>
       </div>
     </div>

@@ -8,21 +8,41 @@ export class DashboardController {
 
   @Get('summary')
   getSummary(@Query() query: GetSummaryDto, @Request() req: any) {
-    return this.dashboardService.getSummary(req.user.userId, query.period)
+    return this.dashboardService.getSummary(
+      req.user.userId,
+      query.period,
+      query.from,
+      query.to,
+    )
   }
 
   @Get('chart')
   getChart(@Query() query: GetSummaryDto, @Request() req: any) {
-    return this.dashboardService.getChart(req.user.userId, query.period)
+    return this.dashboardService.getChart(
+      req.user.userId,
+      query.period,
+      query.from,
+      query.to,
+    )
   }
 
   @Get('categories')
   getCategories(@Query() query: GetSummaryDto, @Request() req: any) {
-    return this.dashboardService.getCategories(req.user.userId, query.period)
+    return this.dashboardService.getCategories(
+      req.user.userId,
+      query.period,
+      query.from,
+      query.to,
+    )
   }
 
   @Get('recent-transactions')
-  getRecentTransactions(@Request() req: any) {
-    return this.dashboardService.getRecentTransactions(req.user.userId)
+  getRecentTransactions(@Query() query: GetSummaryDto, @Request() req: any) {
+    return this.dashboardService.getRecentTransactions(
+      req.user.userId,
+      query.period,
+      query.from,
+      query.to,
+    )
   }
 }

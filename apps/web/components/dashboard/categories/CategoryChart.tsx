@@ -3,16 +3,12 @@
 import { useQuery } from '@tanstack/react-query'
 import { useAuth } from '@clerk/nextjs'
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts'
-import { useDashboard } from '@/components/dashboard/layout/DashboardContext'
+import {
+  PERIOD_MAP,
+  useDashboard,
+} from '@/components/dashboard/layout/DashboardContext'
 import { fetchCategories } from '@/lib/api/dashboard'
 import CategoryChartSkeleton from './CategoryChartSkeleton'
-
-const PERIOD_MAP = {
-  'This Week': 'week',
-  'This Fortnight': 'fortnight',
-  'This Month': 'month',
-  Custom: 'month',
-} as const
 
 const COLORS = [
   '#00C896',
@@ -44,14 +40,17 @@ const CustomTooltip = ({ active, payload }: any) => {
 }
 
 export default function CategoryChart() {
-  const { period } = useDashboard()
+  const { period, customRange } = useDashboard()
   const { getToken } = useAuth()
 
   const apiPeriod = PERIOD_MAP[period] ?? 'month'
+  const fromStr = customRange?.from?.toISOString().split('T')[0]
+  const toStr = customRange?.to?.toISOString().split('T')[0]
 
   const { data, isLoading, isError } = useQuery({
-    queryKey: ['dashboard-categories', apiPeriod],
-    queryFn: () => fetchCategories(apiPeriod, getToken),
+    queryKey: ['dashboard-categories', apiPeriod, fromStr, toStr],
+    queryFn: () => fetchCategories(apiPeriod, getToken, fromStr, toStr),
+    enabled: apiPeriod !== 'custom' || (!!fromStr && !!toStr),
   })
 
   if (isLoading) return <CategoryChartSkeleton />

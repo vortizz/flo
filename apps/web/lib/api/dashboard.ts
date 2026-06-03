@@ -1,4 +1,4 @@
-export type Period = 'week' | 'fortnight' | 'month' | 'year'
+import { ApiPeriod } from '@/components/dashboard/layout/DashboardContext'
 
 export interface SummaryTotals {
   income: number
@@ -7,7 +7,7 @@ export interface SummaryTotals {
 }
 
 export interface SummaryResponse {
-  period: Period
+  period: ApiPeriod
   current: SummaryTotals
   previous: SummaryTotals
   changes: {
@@ -40,12 +40,17 @@ export interface RecentTransaction {
 }
 
 export async function fetchSummary(
-  period: Period,
+  period: string,
   getToken: () => Promise<string | null>,
+  from?: string,
+  to?: string,
 ): Promise<SummaryResponse> {
   const token = await getToken()
+  const params = new URLSearchParams({ period })
+  if (from) params.set('from', from)
+  if (to) params.set('to', to)
   const res = await fetch(
-    `${process.env.NEXT_PUBLIC_API_URL}/api/dashboard/summary?period=${period}`,
+    `${process.env.NEXT_PUBLIC_API_URL}/api/dashboard/summary?${params}`,
     { headers: { Authorization: `Bearer ${token}` } },
   )
   if (!res.ok) throw new Error('Failed to fetch summary')
@@ -53,12 +58,17 @@ export async function fetchSummary(
 }
 
 export async function fetchChart(
-  period: Period,
+  period: ApiPeriod,
   getToken: () => Promise<string | null>,
+  from?: string,
+  to?: string,
 ): Promise<ChartDataPoint[]> {
   const token = await getToken()
+  const params = new URLSearchParams({ period })
+  if (from) params.set('from', from)
+  if (to) params.set('to', to)
   const res = await fetch(
-    `${process.env.NEXT_PUBLIC_API_URL}/api/dashboard/chart?period=${period}`,
+    `${process.env.NEXT_PUBLIC_API_URL}/api/dashboard/chart?${params}`,
     { headers: { Authorization: `Bearer ${token}` } },
   )
   if (!res.ok) throw new Error('Failed to fetch chart data')
@@ -66,12 +76,17 @@ export async function fetchChart(
 }
 
 export async function fetchCategories(
-  period: Period,
+  period: ApiPeriod,
   getToken: () => Promise<string | null>,
+  from?: string,
+  to?: string,
 ): Promise<CategoryDataPoint[]> {
   const token = await getToken()
+  const params = new URLSearchParams({ period })
+  if (from) params.set('from', from)
+  if (to) params.set('to', to)
   const res = await fetch(
-    `${process.env.NEXT_PUBLIC_API_URL}/api/dashboard/categories?period=${period}`,
+    `${process.env.NEXT_PUBLIC_API_URL}/api/dashboard/categories?${params}`,
     { headers: { Authorization: `Bearer ${token}` } },
   )
   if (!res.ok) throw new Error('Failed to fetch categories')
@@ -80,10 +95,16 @@ export async function fetchCategories(
 
 export async function fetchRecentTransactions(
   getToken: () => Promise<string | null>,
+  period: ApiPeriod,
+  from?: string,
+  to?: string,
 ): Promise<RecentTransaction[]> {
   const token = await getToken()
+  const params = new URLSearchParams({ period })
+  if (from) params.set('from', from)
+  if (to) params.set('to', to)
   const res = await fetch(
-    `${process.env.NEXT_PUBLIC_API_URL}/api/dashboard/recent-transactions`,
+    `${process.env.NEXT_PUBLIC_API_URL}/api/dashboard/recent-transactions?${params}`,
     { headers: { Authorization: `Bearer ${token}` } },
   )
   if (!res.ok) throw new Error('Failed to fetch recent transactions')

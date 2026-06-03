@@ -5,6 +5,7 @@ import { useAuth } from '@clerk/nextjs'
 import Link from 'next/link'
 import { fetchRecentTransactions } from '@/lib/api/dashboard'
 import RecentTransactionsSkeleton from './RecentTransactionsSkeleton'
+import { PERIOD_MAP, useDashboard } from '../layout/DashboardContext'
 
 function formatAUD(amount: number) {
   return new Intl.NumberFormat('en-AU', {
@@ -38,12 +39,23 @@ function MerchantIcon({ merchant }: { merchant: string }) {
 
 export default function RecentTransactions() {
   const { getToken } = useAuth()
+  const { period, customRange } = useDashboard()
+
+  const apiPeriod = PERIOD_MAP[period] ?? 'week'
+  const fromStr = customRange?.from?.toISOString().split('T')[0]
+  const toStr = customRange?.to?.toISOString().split('T')[0]
 
   const { data, isLoading, isError } = useQuery({
-    queryKey: ['dashboard-recent-transactions'],
-    queryFn: () => fetchRecentTransactions(getToken),
+    queryKey: ['dashboard-recent-transactions', apiPeriod, fromStr, toStr],
+    queryFn: () => fetchRecentTransactions(getToken, apiPeriod, fromStr, toStr),
+    enabled: apiPeriod !== 'custom' || (!!fromStr && !!toStr),
     staleTime: 0,
   })
+
+  const subtitle =
+    period === 'Custom' && customRange?.from && customRange?.to
+      ? `${customRange.from.toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })} – ${customRange.to.toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}`
+      : `Last ${data?.length} transactions`
 
   if (isLoading) return <RecentTransactionsSkeleton />
 
@@ -59,10 +71,10 @@ export default function RecentTransactions() {
     <div className="bg-[#0d1f2d] border border-[#1a2d3d] rounded-xl p-5 flex flex-col gap-4">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-base font-semibold text-white">
+          <h2 className="text-sm font-semibold text-white">
             Recent Transactions
           </h2>
-          <p className="text-xs text-[#8b949e]">Last 5 transactions</p>
+          <p className="text-xs text-[#8b949e]">{subtitle}</p>
         </div>
         <Link
           href="/transactions"
