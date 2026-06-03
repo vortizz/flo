@@ -205,7 +205,8 @@ export class BasiqService {
       tx.description ??
       'Unknown'
 
-    const category = tx.enrich?.category?.anzsic?.class?.title ?? null
+    const category =
+      tx.enrich?.category?.anzsic?.class?.title ?? tx.subClass?.title ?? null
 
     const date = tx.transactionDate
       ? new Date(tx.transactionDate)
