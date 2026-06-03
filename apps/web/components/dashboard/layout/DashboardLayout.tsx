@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, Suspense } from 'react'
 import { DashboardProvider } from './DashboardContext'
 import Sidebar from './Sidebar'
 import TopBar from './TopBar'
@@ -37,34 +37,36 @@ export default function DashboardLayout({
   }, [isDesktop])
 
   return (
-    <DashboardProvider>
-      <div
-        className="flex h-screen w-full overflow-hidden"
-        style={{
-          background:
-            'radial-gradient(ellipse at 30% 50%, #0d2d42 0%, #071828 20%, #040e1a 50%, #020810 100%)',
-        }}
-      >
-        {mobileOpen && (
-          <div
-            className="fixed inset-0 bg-black/60 z-30 lg:hidden"
-            onClick={() => setMobileOpen(false)}
+    <Suspense>
+      <DashboardProvider>
+        <div
+          className="flex h-screen w-full overflow-hidden"
+          style={{
+            background:
+              'radial-gradient(ellipse at 30% 50%, #0d2d42 0%, #071828 20%, #040e1a 50%, #020810 100%)',
+          }}
+        >
+          {mobileOpen && (
+            <div
+              className="fixed inset-0 bg-black/60 z-30 lg:hidden"
+              onClick={() => setMobileOpen(false)}
+            />
+          )}
+
+          <Sidebar
+            collapsed={collapsed}
+            mobileOpen={mobileOpen}
+            onClose={() => setMobileOpen(false)}
           />
-        )}
 
-        <Sidebar
-          collapsed={collapsed}
-          mobileOpen={mobileOpen}
-          onClose={() => setMobileOpen(false)}
-        />
-
-        <div className="flex flex-col flex-1 overflow-hidden min-w-0">
-          <TopBar title={title} onMenuToggle={toggle} />
-          <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 lg:p-6 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-[#1a2d3d]">
-            {children}
-          </main>
+          <div className="flex flex-col flex-1 overflow-hidden min-w-0">
+            <TopBar title={title} onMenuToggle={toggle} />
+            <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 lg:p-6 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-[#1a2d3d]">
+              {children}
+            </main>
+          </div>
         </div>
-      </div>
-    </DashboardProvider>
+      </DashboardProvider>
+    </Suspense>
   )
 }

@@ -6,12 +6,20 @@ import { PrismaService } from 'src/prisma.service'
 export class DashboardService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async getSummary(clerkId: string, period: Period) {
+  async getSummary(
+    clerkId: string,
+    period: Period,
+    from?: string,
+    to?: string,
+  ) {
     const user = await this.prisma.user.findUniqueOrThrow({
       where: { clerkId },
     })
 
-    const { current, previous } = this.getDateRanges(period)
+    const { current, previous } =
+      period === 'custom' && from && to
+        ? this.getCustomDateRanges(new Date(from), new Date(to))
+        : this.getDateRanges(period)
 
     const [currentTotals, previousTotals] = await Promise.all([
       this.getTotalsForRange(user.id, current.from, current.to),
@@ -73,26 +81,28 @@ export class DashboardService {
     const addDays = (d: Date, n: number) =>
       new Date(d.getFullYear(), d.getMonth(), d.getDate() + n)
 
-    let from: Date
-    let to: Date
-    let prevFrom: Date
-    let prevTo: Date
+    let from: Date = today
+    let to: Date = today
+    let prevFrom: Date = today
+    let prevTo: Date = today
 
     switch (period) {
-      case 'week':
+      case 'week': {
         const day = now.getDay() === 0 ? 6 : now.getDay() - 1
         from = addDays(today, -day)
         to = addDays(from, 6)
         prevFrom = addDays(from, -7)
         prevTo = addDays(from, -1)
         break
-      case 'fortnight':
+      }
+      case 'fortnight': {
         const day2 = now.getDay() === 0 ? 6 : now.getDay() - 1
         from = addDays(today, -day2 - 7)
         to = addDays(from, 13)
         prevFrom = addDays(from, -14)
         prevTo = addDays(from, -1)
         break
+      }
       case 'month':
         from = new Date(now.getFullYear(), now.getMonth(), 1)
         to = new Date(now.getFullYear(), now.getMonth() + 1, 0)
@@ -104,6 +114,9 @@ export class DashboardService {
         to = new Date(now.getFullYear(), 11, 31)
         prevFrom = new Date(now.getFullYear() - 1, 0, 1)
         prevTo = new Date(now.getFullYear() - 1, 11, 31)
+        break
+      case 'custom':
+        // custom is handled separately via getCustomDateRanges
         break
     }
 
@@ -118,12 +131,15 @@ export class DashboardService {
     return Math.round(((current - previous) / Math.abs(previous)) * 1000) / 10
   }
 
-  async getChart(clerkId: string, period: Period) {
+  async getChart(clerkId: string, period: Period, from?: string, to?: string) {
     const user = await this.prisma.user.findUniqueOrThrow({
       where: { clerkId },
     })
 
-    const { current } = this.getDateRanges(period)
+    const { current } =
+      period === 'custom' && from && to
+        ? this.getCustomDateRanges(new Date(from), new Date(to))
+        : this.getDateRanges(period)
 
     const transactions = await this.prisma.transaction.findMany({
       where: {
@@ -134,26 +150,21 @@ export class DashboardService {
       orderBy: { date: 'asc' },
     })
 
-    // Group by date
     const byDate = new Map<string, { income: number; expenses: number }>()
-
     for (const t of transactions) {
-      const key = t.date.toISOString().split('T')[0] // YYYY-MM-DD
+      const key = t.date.toISOString().split('T')[0]
       if (!byDate.has(key)) byDate.set(key, { income: 0, expenses: 0 })
       const entry = byDate.get(key)!
       if (t.type === 'CREDIT') entry.income += Number(t.amount)
       else entry.expenses += Number(t.amount)
     }
 
-    // Fill in missing days with 0
     const days = this.getDaysInRange(current.from, current.to)
-    const data = days.map(day => ({
+    return days.map(day => ({
       date: day,
       income: Math.round((byDate.get(day)?.income ?? 0) * 100) / 100,
       expenses: Math.round((byDate.get(day)?.expenses ?? 0) * 100) / 100,
     }))
-
-    return data
   }
 
   private getDaysInRange(from: Date, to: Date): string[] {
@@ -166,12 +177,20 @@ export class DashboardService {
     return days
   }
 
-  async getCategories(clerkId: string, period: Period) {
+  async getCategories(
+    clerkId: string,
+    period: Period,
+    from?: string,
+    to?: string,
+  ) {
     const user = await this.prisma.user.findUniqueOrThrow({
       where: { clerkId },
     })
 
-    const { current } = this.getDateRanges(period)
+    const { current } =
+      period === 'custom' && from && to
+        ? this.getCustomDateRanges(new Date(from), new Date(to))
+        : this.getDateRanges(period)
 
     const transactions = await this.prisma.transaction.findMany({
       where: {
@@ -182,23 +201,18 @@ export class DashboardService {
       select: { amount: true, category: true },
     })
 
-    // Group by category
     const byCategory = new Map<string, number>()
     for (const t of transactions) {
-      const key = t.category ?? 'Other'
-      if (key === 'Unknown') continue
+      const key = t.category && t.category !== 'Unknown' ? t.category : null
+      if (!key) continue
       byCategory.set(key, (byCategory.get(key) ?? 0) + Number(t.amount))
     }
 
-    // Sort by amount descending, take top 5, group rest as "Other"
     const sorted = [...byCategory.entries()].sort((a, b) => b[1] - a[1])
-
     const top5 = sorted.slice(0, 5)
     const rest = sorted.slice(5)
-
     const otherAmount = rest.reduce((sum, [, amount]) => sum + amount, 0)
     if (otherAmount > 0) top5.push(['Other', otherAmount])
-
     const total = top5.reduce((sum, [, amount]) => sum + amount, 0)
 
     return top5.map(([category, amount]) => ({
@@ -208,13 +222,26 @@ export class DashboardService {
     }))
   }
 
-  async getRecentTransactions(clerkId: string) {
+  async getRecentTransactions(
+    clerkId: string,
+    period: Period,
+    from?: string,
+    to?: string,
+  ) {
     const user = await this.prisma.user.findUniqueOrThrow({
       where: { clerkId },
     })
 
+    const { current } =
+      period === 'custom' && from && to
+        ? this.getCustomDateRanges(new Date(from), new Date(to))
+        : this.getDateRanges(period)
+
     const transactions = await this.prisma.transaction.findMany({
-      where: { account: { userId: user.id } },
+      where: {
+        account: { userId: user.id },
+        date: { gte: current.from, lte: current.to },
+      },
       orderBy: { date: 'desc' },
       take: 5,
       select: {
@@ -242,5 +269,24 @@ export class DashboardService {
       type: t.type,
       account: `${t.account.bankName} · ${t.account.accountName}`,
     }))
+  }
+
+  private getCustomDateRanges(from: Date, to: Date) {
+    const endOfDay = (d: Date) =>
+      new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999)
+
+    const rangeDays = Math.round(
+      (to.getTime() - from.getTime()) / (1000 * 60 * 60 * 24),
+    )
+
+    const prevTo = new Date(from)
+    prevTo.setDate(from.getDate() - 1)
+    const prevFrom = new Date(prevTo)
+    prevFrom.setDate(prevTo.getDate() - rangeDays)
+
+    return {
+      current: { from, to: endOfDay(to) },
+      previous: { from: prevFrom, to: endOfDay(prevTo) },
+    }
   }
 }

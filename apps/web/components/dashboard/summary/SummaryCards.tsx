@@ -2,28 +2,28 @@
 
 import { useQuery } from '@tanstack/react-query'
 import { useAuth } from '@clerk/nextjs'
-import { useDashboard } from '@/components/dashboard/layout/DashboardContext'
+import {
+  PERIOD_MAP,
+  useDashboard,
+} from '@/components/dashboard/layout/DashboardContext'
 import { fetchSummary } from '@/lib/api/dashboard'
 import SummaryCardSkeleton from './SummaryCardSkeleton'
 import SummaryCard from './SummaryCard'
 import CashflowRatio from './CashflowRatio'
 
-const PERIOD_MAP = {
-  'This Week': 'week',
-  'This Fortnight': 'fortnight',
-  'This Month': 'month',
-  Custom: 'month',
-} as const
-
 export default function SummaryCards() {
-  const { period } = useDashboard()
+  const { period, customRange } = useDashboard()
   const { getToken } = useAuth()
 
   const apiPeriod = PERIOD_MAP[period] ?? 'week'
 
+  const fromStr = customRange?.from?.toISOString().split('T')[0]
+  const toStr = customRange?.to?.toISOString().split('T')[0]
+
   const { data, isLoading, isError } = useQuery({
-    queryKey: ['dashboard-summary', apiPeriod],
-    queryFn: () => fetchSummary(apiPeriod, getToken),
+    queryKey: ['dashboard-summary', apiPeriod, fromStr, toStr],
+    queryFn: () => fetchSummary(apiPeriod, getToken, fromStr, toStr),
+    enabled: apiPeriod !== 'custom' || (!!fromStr && !!toStr),
   })
 
   if (isLoading) {

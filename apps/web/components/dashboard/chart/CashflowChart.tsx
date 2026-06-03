@@ -11,16 +11,12 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from 'recharts'
-import { useDashboard } from '@/components/dashboard/layout/DashboardContext'
+import {
+  PERIOD_MAP,
+  useDashboard,
+} from '@/components/dashboard/layout/DashboardContext'
 import { fetchChart } from '@/lib/api/dashboard'
 import CashflowChartSkeleton from './CashflowChartSkeleton'
-
-const PERIOD_MAP = {
-  'This Week': 'week',
-  'This Fortnight': 'fortnight',
-  'This Month': 'month',
-  Custom: 'month',
-} as const
 
 function formatDate(dateStr: string, period: string) {
   const date = new Date(dateStr)
@@ -57,14 +53,17 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 }
 
 export default function CashflowChart() {
-  const { period } = useDashboard()
+  const { period, customRange } = useDashboard()
   const { getToken } = useAuth()
 
-  const apiPeriod = PERIOD_MAP[period] ?? 'month'
+  const apiPeriod = PERIOD_MAP[period] ?? 'week'
+  const fromStr = customRange?.from?.toISOString().split('T')[0]
+  const toStr = customRange?.to?.toISOString().split('T')[0]
 
   const { data, isLoading, isError } = useQuery({
-    queryKey: ['dashboard-chart', apiPeriod],
-    queryFn: () => fetchChart(apiPeriod, getToken),
+    queryKey: ['dashboard-chart', apiPeriod, fromStr, toStr],
+    queryFn: () => fetchChart(apiPeriod, getToken, fromStr, toStr),
+    enabled: apiPeriod !== 'custom' || (!!fromStr && !!toStr),
   })
 
   const chartData = data?.map(d => ({
