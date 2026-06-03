@@ -207,4 +207,40 @@ export class DashboardService {
       percentage: Math.round((amount / total) * 1000) / 10,
     }))
   }
+
+  async getRecentTransactions(clerkId: string) {
+    const user = await this.prisma.user.findUniqueOrThrow({
+      where: { clerkId },
+    })
+
+    const transactions = await this.prisma.transaction.findMany({
+      where: { account: { userId: user.id } },
+      orderBy: { date: 'desc' },
+      take: 5,
+      select: {
+        id: true,
+        amount: true,
+        type: true,
+        merchant: true,
+        category: true,
+        date: true,
+        account: {
+          select: {
+            accountName: true,
+            bankName: true,
+          },
+        },
+      },
+    })
+
+    return transactions.map(t => ({
+      id: t.id,
+      merchant: t.merchant,
+      category: t.category,
+      date: t.date,
+      amount: Number(t.amount),
+      type: t.type,
+      account: `${t.account.bankName} · ${t.account.accountName}`,
+    }))
+  }
 }

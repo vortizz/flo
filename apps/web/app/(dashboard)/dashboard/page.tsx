@@ -3,6 +3,7 @@
 import CategoryChart from '@/components/dashboard/categories/CategoryChart'
 import CashflowChart from '@/components/dashboard/chart/CashflowChart'
 import SummaryCards from '@/components/dashboard/summary/SummaryCards'
+import RecentTransactions from '@/components/dashboard/transactions/RecentTransactions'
 import { useUser } from '@clerk/nextjs'
 
 export default function DashboardPage() {
@@ -15,6 +16,7 @@ export default function DashboardPage() {
         <CashflowChart />
         <CategoryChart />
       </div>
+      <RecentTransactions />
     </div>
   )
 }
