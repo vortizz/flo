@@ -20,4 +20,9 @@ export class DashboardController {
   getCategories(@Query() query: GetSummaryDto, @Request() req: any) {
     return this.dashboardService.getCategories(req.user.userId, query.period)
   }
+
+  @Get('recent-transactions')
+  getRecentTransactions(@Request() req: any) {
+    return this.dashboardService.getRecentTransactions(req.user.userId)
+  }
 }
