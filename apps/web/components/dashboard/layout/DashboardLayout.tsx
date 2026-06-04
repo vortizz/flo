@@ -7,7 +7,6 @@ import TopBar from './TopBar'
 
 export default function DashboardLayout({
   children,
-  title = 'Overview',
 }: {
   children: React.ReactNode
   title?: string
@@ -60,7 +59,7 @@ export default function DashboardLayout({
           />
 
           <div className="flex flex-col flex-1 overflow-hidden min-w-0">
-            <TopBar title={title} onMenuToggle={toggle} />
+            <TopBar onMenuToggle={toggle} />
             <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 lg:p-6 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-[#1a2d3d]">
               {children}
             </main>

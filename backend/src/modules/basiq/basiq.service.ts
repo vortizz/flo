@@ -200,13 +200,13 @@ export class BasiqService {
 
   normaliseTransaction(tx: any, accountId: string) {
     const merchant =
-      tx.enrich?.merchant?.businessName ??
-      tx.enrich?.cleanDescription ??
-      tx.description ??
+      tx.enrich?.merchant?.businessName ||
+      tx.enrich?.cleanDescription ||
+      tx.description ||
       'Unknown'
 
     const category =
-      tx.enrich?.category?.anzsic?.class?.title ?? tx.subClass?.title ?? null
+      tx.enrich?.category?.anzsic?.class?.title || tx.subClass?.title || null
 
     const date = tx.transactionDate
       ? new Date(tx.transactionDate)
@@ -224,7 +224,7 @@ export class BasiqService {
       type,
       merchant,
       category,
-      description: tx.description ?? null,
+      description: tx.description || null,
       date,
       raw: tx,
       source: SourceType.BASIQ,

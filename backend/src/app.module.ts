@@ -10,6 +10,7 @@ import { BasiqModule } from './modules/basiq/basiq.module'
 import { InstitutionsModule } from './modules/institutions/institutions.module'
 import appConfig from './config/app.config'
 import { DashboardModule } from './modules/dashboard/dashboard.module'
+import { TransactionsModule } from './modules/transactions/transactions.module'
 
 @Module({
   imports: [
@@ -23,6 +24,7 @@ import { DashboardModule } from './modules/dashboard/dashboard.module'
     BasiqModule,
     InstitutionsModule,
     DashboardModule,
+    TransactionsModule,
   ],
   controllers: [AppController],
   providers: [
