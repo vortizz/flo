@@ -2,7 +2,14 @@
 
 import { useQuery } from '@tanstack/react-query'
 import { useAuth } from '@clerk/nextjs'
-import { Tag, LayoutGrid, TrendingDown, TrendingUp } from 'lucide-react'
+import {
+  Tag,
+  LayoutGrid,
+  TrendingDown,
+  TrendingUp,
+  Search,
+  X,
+} from 'lucide-react'
 import { fetchFilterOptions } from '@/lib/api/transactions'
 import FilterDropdown from './FilterDropdown'
 import AccountFilterDropdown from './AccountFilterDropdown'
@@ -44,6 +51,8 @@ interface TransactionsFiltersProps {
   onCustomRangeChange: (
     range: { from: Date | undefined; to?: Date | undefined } | undefined,
   ) => void
+  search: string
+  onSearchChange: (v: string) => void
 }
 
 export default function TransactionsFilters({
@@ -57,6 +66,8 @@ export default function TransactionsFilters({
   onCategoryChange,
   customRange,
   onCustomRangeChange,
+  search,
+  onSearchChange,
 }: TransactionsFiltersProps) {
   const { getToken } = useAuth()
 
@@ -92,6 +103,27 @@ export default function TransactionsFilters({
 
   return (
     <div className="flex flex-col gap-3">
+      <div className="relative">
+        <Search
+          size={15}
+          className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#94a3b8]"
+        />
+        <input
+          type="text"
+          placeholder="Search by merchant..."
+          value={search}
+          onChange={e => onSearchChange(e.target.value)}
+          className="w-full bg-[#0f172a] border border-white/10 rounded-lg pl-10 pr-10 py-2.5 text-sm text-white placeholder-[#8b949e] focus:outline-none focus:border-[#00C896]/60 transition-colors"
+        />
+        {search && (
+          <button
+            onClick={() => onSearchChange('')}
+            className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#94a3b8] hover:text-white transition-colors"
+          >
+            <X size={14} />
+          </button>
+        )}
+      </div>
       <div className="flex items-center gap-3 border-b border-white/5 pb-6 pt-2 flex-wrap">
         <DateFilterDropdown
           days={days}

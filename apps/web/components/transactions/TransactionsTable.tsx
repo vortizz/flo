@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useAuth } from '@clerk/nextjs'
 import { fetchTransactions, type Transaction } from '@/lib/api/transactions'
@@ -8,6 +8,7 @@ import TransactionsTableSkeleton from './TransactionsTableSkeleton'
 import TransactionRow from './TransactionRow'
 import TransactionsPagination from './TransactionsPagination'
 import TransactionsFilters from './TransactionsFilters'
+import { useDebounce } from '@/hooks/useDebounce'
 
 function groupByDate(transactions: Transaction[]) {
   const groups = new Map<string, Transaction[]>()
@@ -43,6 +44,8 @@ export default function TransactionsTable() {
   >()
   const [accountId, setAccountId] = useState<string | undefined>()
   const [category, setCategory] = useState<string | undefined>()
+  const [search, setSearch] = useState('')
+  const debouncedSearch = useDebounce(search, 500)
 
   const fromStr =
     days === 'custom' && customRange?.from
@@ -83,6 +86,10 @@ export default function TransactionsTable() {
       setCategory(v)
       setPage(1)
     },
+    search,
+    onSearchChange: (v: string) => {
+      setSearch(v)
+    },
   }
 
   const { data, isLoading, isFetching, isError } = useQuery({
@@ -95,6 +102,7 @@ export default function TransactionsTable() {
       toStr,
       accountId,
       category,
+      debouncedSearch,
     ],
     queryFn: () =>
       fetchTransactions(
@@ -106,12 +114,17 @@ export default function TransactionsTable() {
           category,
           from: fromStr,
           to: toStr,
+          search: debouncedSearch || undefined,
         },
         getToken,
       ),
     staleTime: 0,
     placeholderData: prev => prev,
   })
+
+  useEffect(() => {
+    setPage(1)
+  }, [debouncedSearch])
 
   if (isLoading && !data) {
     return (
