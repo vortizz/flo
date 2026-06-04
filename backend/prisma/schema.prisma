@@ -21,17 +21,20 @@ model User {
 }
 
 model Account {
-  id           String        @id @default(cuid())
-  userId       String
-  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  bankName     String
-  accountName  String
-  basiqId      String?       @unique
-  balance      Decimal       @default(0) @db.Decimal(12, 2)
-  lastSyncedAt DateTime?
-  transactions Transaction[]
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
+  id            String        @id @default(cuid())
+  userId        String
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bankName      String
+  accountName   String
+  basiqId       String?       @unique
+  balance       Decimal       @default(0) @db.Decimal(12, 2)
+  lastSyncedAt  DateTime?
+  transactions  Transaction[]
+  last4         String?
+  institutionId String?
+  institution   Institution?  @relation(fields: [institutionId], references: [id])
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
 }
 
 model Transaction {
@@ -60,6 +63,7 @@ model Institution {
   logoUrl         String?
   isActive        Boolean  @default(true)
   isPopular       Boolean  @default(false)
+  accounts        Account[]
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 }

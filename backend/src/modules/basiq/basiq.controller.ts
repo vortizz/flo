@@ -94,19 +94,26 @@ export class BasiqController {
         where: { id: account.institution },
       })
 
+      const last4 =
+        account.accountNo?.slice(-4) || account.maskedNumber?.slice(-4) || null
+
       const saved = await this.prisma.account.upsert({
         where: { basiqId: account.id },
         update: {
-          accountName: account.displayName ?? account.name,
+          accountName: account.displayName || account.name,
           balance: account.balance,
+          last4,
+          institutionId: institution?.id ?? null,
           lastSyncedAt: new Date(),
         },
         create: {
           userId: user.id,
           basiqId: account.id,
-          bankName: institution?.name ?? account.institution,
-          accountName: account.displayName ?? account.name,
-          balance: account.balance ?? 0,
+          institutionId: institution?.id ?? null,
+          bankName: institution?.name || account.institution,
+          accountName: account.displayName || account.name,
+          balance: account.balance || 0,
+          last4,
           lastSyncedAt: new Date(),
         },
       })
@@ -117,8 +124,6 @@ export class BasiqController {
     const transactions = await this.basiqService.getTransactions(
       user.basiqUserId,
     )
-    this.logger.log(`Fetched ${transactions.length} transactions`)
-    this.logger.debug(`Transactions: ${JSON.stringify(transactions[0])}`)
 
     let synced = 0
     for (const tx of transactions) {

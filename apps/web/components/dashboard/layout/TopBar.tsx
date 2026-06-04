@@ -2,17 +2,26 @@
 
 import PeriodSelector from './PeriodSelector'
 import { Search, Bell, Menu } from 'lucide-react'
+import { usePathname } from 'next/navigation'
 
-export default function TopBar({
-  title,
-  onMenuToggle,
-}: {
-  title: string
-  onMenuToggle: () => void
-}) {
+const ROUTE_TITLES: Record<string, string> = {
+  '/dashboard': 'Overview',
+  '/transactions': 'Transactions',
+  '/accounts': 'Accounts',
+  '/settings': 'Settings',
+}
+
+export default function TopBar({ onMenuToggle }: { onMenuToggle: () => void }) {
+  const pathname = usePathname()
+  const showPeriodSelector = pathname === '/dashboard'
+
+  const title =
+    Object.entries(ROUTE_TITLES).find(([route]) =>
+      pathname.startsWith(route),
+    )?.[1] ?? 'Overview'
+
   return (
     <header className="border-b border-white/5 bg-[#020617]/80 backdrop-blur-md shrink-0 z-10">
-      {/* Main row */}
       <div className="flex items-center justify-between h-16 px-4 sm:h-20 sm:px-6 lg:px-8 gap-4">
         <div className="flex items-center gap-3">
           <button
@@ -28,12 +37,12 @@ export default function TopBar({
         </div>
 
         <div className="flex items-center gap-2.5">
-          {/* Period selector: hidden on mobile (shown in second row), visible sm+ */}
-          <div className="hidden sm:block">
-            <PeriodSelector />
-          </div>
+          {showPeriodSelector && (
+            <div className="hidden sm:block">
+              <PeriodSelector />
+            </div>
+          )}
 
-          {/* Search bar: hidden on mobile */}
           <div className="hidden md:flex items-center gap-2 bg-[#111c2a] border border-[#1a2d3d] rounded-lg px-4 w-48 py-2 lg:w-64 focus-within:border-[#00C896]/40 transition-colors">
             <Search size={15} className="text-[#8b949e] shrink-0" />
             <input
@@ -53,10 +62,11 @@ export default function TopBar({
         </div>
       </div>
 
-      {/* Mobile second row: period selector */}
-      <div className="sm:hidden px-4 pb-3">
-        <PeriodSelector />
-      </div>
+      {showPeriodSelector && (
+        <div className="sm:hidden px-4 pb-3">
+          <PeriodSelector />
+        </div>
+      )}
     </header>
   )
 }
