@@ -1,10 +1,13 @@
-import { type Account } from '@/lib/api/accounts'
-import {
-  RefreshCw,
-  MoreVertical,
-  CircleCheck,
-  TriangleAlert,
-} from 'lucide-react'
+'use client'
+
+import { useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
+import { useAuth } from '@clerk/nextjs'
+import { RefreshCw, CircleCheck, TriangleAlert } from 'lucide-react'
+import { type Account, deleteAccount } from '@/lib/api/accounts'
+import AccountActionsMenu from './AccountActionsMenu'
+import DisconnectModal from './DisconnectModal'
+import { Toast } from '@/components/ui/Toast'
 import Image from 'next/image'
 
 function formatAUD(amount: number) {
@@ -98,58 +101,106 @@ function StatusBadge({ status }: { status: Account['status'] }) {
 }
 
 export default function AccountRow({ account }: { account: Account }) {
+  const { getToken } = useAuth()
+  const queryClient = useQueryClient()
+  const [showModal, setShowModal] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
+  const [toast, setToast] = useState<{
+    message: string
+    type: 'success' | 'error'
+  } | null>(null)
+
+  async function handleDisconnect() {
+    setIsDeleting(true)
+    try {
+      await deleteAccount(account.id, getToken)
+      queryClient.invalidateQueries({ queryKey: ['accounts'] })
+      setShowModal(false)
+      setToast({
+        message: `${account.accountName} disconnected successfully`,
+        type: 'success',
+      })
+    } catch (e) {
+      console.error(e)
+      setToast({
+        message: 'Failed to disconnect account. Please try again.',
+        type: 'error',
+      })
+    } finally {
+      setIsDeleting(false)
+    }
+  }
+
   return (
-    <div className="grid grid-cols-[2fr_2fr_1fr_1fr_1fr_1.5fr_80px] gap-4 px-6 py-4 border-b border-[#1a2d3d] hover:bg-[#ffffff04] transition-colors items-center">
-      {/* Bank */}
-      <div className="flex items-center gap-3 min-w-0">
-        <BankAvatar name={account.bankName} logoUrl={account.logoUrl} />
-        <span className="text-sm text-white font-medium truncate">
-          {account.bankName}
+    <>
+      <div className="grid grid-cols-[2fr_2fr_1fr_1fr_1fr_1.5fr_80px] gap-4 px-6 py-4 border-b border-[#1a2d3d] hover:bg-[#ffffff04] transition-colors items-center">
+        {/* Bank */}
+        <div className="flex items-center gap-3 min-w-0">
+          <BankAvatar name={account.bankName} logoUrl={account.logoUrl} />
+          <span className="text-sm text-white font-medium truncate">
+            {account.bankName}
+          </span>
+        </div>
+
+        {/* Account Name */}
+        <div className="flex flex-col min-w-0">
+          <span className="text-sm text-white truncate">
+            {account.accountName}
+          </span>
+          {account.last4 && (
+            <span className="text-xs text-[#8b949e]">••• {account.last4}</span>
+          )}
+        </div>
+
+        {/* Currency */}
+        <div className="flex items-center gap-1.5">
+          <span className="text-[10px] font-medium text-white bg-blue-800 px-1 py-0.5 rounded-full">
+            AU
+          </span>
+          <span className="text-sm text-[#8b949e]">AUD</span>
+        </div>
+
+        {/* Balance */}
+        <span
+          className={`text-sm ${account.balance < 0 ? 'text-red-400' : 'text-[#8b949e]'}`}
+        >
+          {formatAUD(account.balance)}
         </span>
-      </div>
 
-      {/* Account Name */}
-      <div className="flex flex-col min-w-0">
-        <span className="text-sm text-white truncate">
-          {account.accountName}
+        {/* Last Sync */}
+        <span className="text-sm text-[#8b949e]">
+          {formatLastSync(account.lastSyncedAt)}
         </span>
-        {account.last4 && (
-          <span className="text-xs text-[#8b949e]">••• {account.last4}</span>
-        )}
+
+        {/* Status */}
+        <StatusBadge status={account.status} />
+
+        {/* Actions */}
+        <div className="flex items-center gap-1">
+          <button className="w-8 h-8 flex items-center justify-center rounded-md text-[#8b949e] hover:text-white hover:bg-[#1a2d3d] transition-colors">
+            <RefreshCw size={14} />
+          </button>
+          <AccountActionsMenu onDisconnect={() => setShowModal(true)} />
+        </div>
       </div>
 
-      {/* Currency */}
-      <div className="flex items-center gap-1.5">
-        <span className="text-[10px] font-medium text-white bg-blue-800 px-1 py-0.5 rounded-full">
-          AU
-        </span>
-        <span className="text-sm text-[#8b949e]">AUD</span>
-      </div>
+      {showModal && (
+        <DisconnectModal
+          accountName={account.accountName}
+          bankName={account.bankName}
+          onConfirm={handleDisconnect}
+          onCancel={() => setShowModal(false)}
+          isLoading={isDeleting}
+        />
+      )}
 
-      {/* Balance */}
-      <span
-        className={`text-sm ${account.balance < 0 ? 'text-red-400' : 'text-[#8b949e]'}`}
-      >
-        {formatAUD(account.balance)}
-      </span>
-
-      {/* Last Sync */}
-      <span className="text-sm text-[#8b949e]">
-        {formatLastSync(account.lastSyncedAt)}
-      </span>
-
-      {/* Status */}
-      <StatusBadge status={account.status} />
-
-      {/* Actions */}
-      <div className="flex items-center gap-1">
-        <button className="w-8 h-8 flex items-center justify-center rounded-md text-[#8b949e] hover:text-white hover:bg-[#1a2d3d] transition-colors">
-          <RefreshCw size={14} />
-        </button>
-        <button className="w-8 h-8 flex items-center justify-center rounded-md text-[#8b949e] hover:text-white hover:bg-[#1a2d3d] transition-colors">
-          <MoreVertical size={14} />
-        </button>
-      </div>
-    </div>
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
+    </>
   )
 }
