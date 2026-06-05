@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '@clerk/nextjs'
 import { RefreshCw, CircleCheck, TriangleAlert } from 'lucide-react'
-import { type Account, deleteAccount } from '@/lib/api/accounts'
+import { type Account, deleteAccount, syncAccount } from '@/lib/api/accounts'
 import AccountActionsMenu from './AccountActionsMenu'
 import DisconnectModal from './DisconnectModal'
 import { Toast } from '@/components/ui/Toast'
@@ -105,6 +105,7 @@ export default function AccountRow({ account }: { account: Account }) {
   const queryClient = useQueryClient()
   const [showModal, setShowModal] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [isSyncing, setIsSyncing] = useState(false)
   const [toast, setToast] = useState<{
     message: string
     type: 'success' | 'error'
@@ -128,6 +129,26 @@ export default function AccountRow({ account }: { account: Account }) {
       })
     } finally {
       setIsDeleting(false)
+    }
+  }
+
+  async function handleSync() {
+    setIsSyncing(true)
+    try {
+      const result = await syncAccount(account.id, getToken)
+      queryClient.invalidateQueries({ queryKey: ['accounts'] })
+      setToast({
+        message: `Synced ${result.synced} new transaction${result.synced !== 1 ? 's' : ''}`,
+        type: 'success',
+      })
+    } catch (e) {
+      console.error(e)
+      setToast({
+        message: 'Failed to sync account. Please try again.',
+        type: 'error',
+      })
+    } finally {
+      setIsSyncing(false)
     }
   }
 
@@ -177,8 +198,12 @@ export default function AccountRow({ account }: { account: Account }) {
 
         {/* Actions */}
         <div className="flex items-center gap-1">
-          <button className="w-8 h-8 flex items-center justify-center rounded-md text-[#8b949e] hover:text-white hover:bg-[#1a2d3d] transition-colors">
-            <RefreshCw size={14} />
+          <button
+            onClick={handleSync}
+            disabled={isSyncing}
+            className="w-8 h-8 flex items-center justify-center rounded-md text-[#8b949e] hover:text-white hover:bg-[#1a2d3d] transition-colors disabled:opacity-50"
+          >
+            <RefreshCw size={14} className={isSyncing ? 'animate-spin' : ''} />
           </button>
           <AccountActionsMenu onDisconnect={() => setShowModal(true)} />
         </div>

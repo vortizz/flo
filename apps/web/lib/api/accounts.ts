@@ -45,3 +45,34 @@ export async function deleteAccount(
   )
   if (!res.ok) throw new Error('Failed to disconnect account')
 }
+
+export async function syncAccount(
+  id: string,
+  getToken: () => Promise<string | null>,
+): Promise<{ synced: number }> {
+  const token = await getToken()
+  const res = await fetch(
+    `${process.env.NEXT_PUBLIC_API_URL}/api/accounts/${id}/sync`,
+    {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+    },
+  )
+  if (!res.ok) throw new Error('Failed to sync account')
+  return res.json()
+}
+
+export async function syncAllAccounts(
+  getToken: () => Promise<string | null>,
+): Promise<{ synced: number; failed: number }> {
+  const token = await getToken()
+  const res = await fetch(
+    `${process.env.NEXT_PUBLIC_API_URL}/api/accounts/sync-all`,
+    {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+    },
+  )
+  if (!res.ok) throw new Error('Failed to sync all accounts')
+  return res.json()
+}

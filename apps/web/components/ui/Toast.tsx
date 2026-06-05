@@ -1,6 +1,7 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { CheckCircle, XCircle, X } from 'lucide-react'
 
 interface ToastProps {
@@ -15,8 +16,8 @@ export function Toast({ message, type, onClose }: ToastProps) {
     return () => clearTimeout(timer)
   }, [onClose])
 
-  return (
-    <div className="fixed bottom-6 right-6 z-100 flex items-center gap-3 bg-[#0d1f2d] border border-[#1a2d3d] rounded-xl px-4 py-3 shadow-xl animate-in slide-in-from-bottom-2">
+  return createPortal(
+    <div className="fixed bottom-6 right-6 z-200 flex items-center gap-3 bg-[#0d1f2d] border border-[#1a2d3d] rounded-xl px-4 py-3 shadow-xl">
       {type === 'success' ? (
         <CheckCircle size={16} className="text-[#00C896] shrink-0" />
       ) : (
@@ -29,6 +30,7 @@ export function Toast({ message, type, onClose }: ToastProps) {
       >
         <X size={14} />
       </button>
-    </div>
+    </div>,
+    document.body,
   )
 }

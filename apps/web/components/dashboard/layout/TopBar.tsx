@@ -1,8 +1,13 @@
 'use client'
 
+import { useAuth } from '@clerk/nextjs'
 import PeriodSelector from './PeriodSelector'
 import { Search, Bell, Menu, RefreshCw, Plus } from 'lucide-react'
 import { usePathname } from 'next/navigation'
+import { useQueryClient } from '@tanstack/react-query'
+import { useState } from 'react'
+import { syncAllAccounts } from '@/lib/api/accounts'
+import { Toast } from '@/components/ui/Toast'
 
 const ROUTE_TITLES: Record<string, string> = {
   '/dashboard': 'Overview',
@@ -16,10 +21,40 @@ export default function TopBar({ onMenuToggle }: { onMenuToggle: () => void }) {
   const showPeriodSelector = pathname === '/dashboard'
   const isAccounts = pathname.startsWith('/accounts')
 
+  const { getToken } = useAuth()
+  const queryClient = useQueryClient()
+  const [isSyncingAll, setIsSyncingAll] = useState(false)
+  const [toast, setToast] = useState<{
+    message: string
+    type: 'success' | 'error'
+  } | null>(null)
+
   const title =
     Object.entries(ROUTE_TITLES).find(([route]) =>
       pathname.startsWith(route),
     )?.[1] ?? 'Overview'
+
+  async function handleSyncAll() {
+    setIsSyncingAll(true)
+    try {
+      const result = await syncAllAccounts(getToken)
+      queryClient.invalidateQueries({ queryKey: ['accounts'] })
+      setToast({
+        message:
+          result.failed > 0
+            ? `Synced ${result.synced} accounts, ${result.failed} failed`
+            : `All ${result.synced} accounts synced successfully`,
+        type: result.failed > 0 ? 'error' : 'success',
+      })
+    } catch (e) {
+      setToast({
+        message: 'Failed to sync accounts. Please try again.',
+        type: 'error',
+      })
+    } finally {
+      setIsSyncingAll(false)
+    }
+  }
 
   return (
     <header className="border-b border-white/5 bg-[#020617]/80 backdrop-blur-md shrink-0 z-10">
@@ -45,9 +80,16 @@ export default function TopBar({ onMenuToggle }: { onMenuToggle: () => void }) {
           )}
 
           {isAccounts && (
-            <button className="flex items-center gap-2 px-2 sm:px-4 py-2 rounded-lg bg-transparent border border-[#ffffff1a] text-white text-sm hover:bg-[#ffffff0d] hover:border-[#ffffff33] transition-colors">
-              <RefreshCw size={14} />
-              <span className="hidden sm:block">Sync All</span>
+            <button
+              onClick={handleSyncAll}
+              disabled={isSyncingAll}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#00C896]/10 border border-[#00C896]/20 text-[#00C896] text-sm font-medium hover:bg-[#00C896]/20 transition-colors disabled:opacity-50"
+            >
+              <RefreshCw
+                size={14}
+                className={isSyncingAll ? 'animate-spin' : ''}
+              />
+              {isSyncingAll ? 'Syncing...' : 'Sync All'}
             </button>
           )}
 
@@ -81,6 +123,14 @@ export default function TopBar({ onMenuToggle }: { onMenuToggle: () => void }) {
         <div className="sm:hidden px-4 pb-3">
           <PeriodSelector />
         </div>
+      )}
+
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
       )}
     </header>
   )
