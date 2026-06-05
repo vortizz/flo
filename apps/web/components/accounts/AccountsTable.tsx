@@ -8,6 +8,7 @@ import AccountsTableSkeleton from './AccountsTableSkeleton'
 import { useState } from 'react'
 import { Plus } from 'lucide-react'
 import AccountsSummaryCards from './AccountsSummaryCards'
+import AccountsSummaryCardsSkeleton from './AccountsSummaryCardsSkeleton'
 
 type Tab = 'all' | 'connected' | 'disconnected' | 'manual'
 
@@ -30,7 +31,13 @@ export default function AccountsTable() {
   const filtered =
     data?.accounts.filter(a => (tab === 'all' ? true : a.status === tab)) ?? []
 
-  if (isLoading) return <AccountsTableSkeleton />
+  if (isLoading)
+    return (
+      <div className="flex flex-col gap-4">
+        <AccountsSummaryCardsSkeleton />
+        <AccountsTableSkeleton />
+      </div>
+    )
 
   if (isError || !data) {
     return (
