@@ -1,7 +1,7 @@
 'use client'
 
 import PeriodSelector from './PeriodSelector'
-import { Search, Bell, Menu } from 'lucide-react'
+import { Search, Bell, Menu, RefreshCw, Plus } from 'lucide-react'
 import { usePathname } from 'next/navigation'
 
 const ROUTE_TITLES: Record<string, string> = {
@@ -14,6 +14,7 @@ const ROUTE_TITLES: Record<string, string> = {
 export default function TopBar({ onMenuToggle }: { onMenuToggle: () => void }) {
   const pathname = usePathname()
   const showPeriodSelector = pathname === '/dashboard'
+  const isAccounts = pathname.startsWith('/accounts')
 
   const title =
     Object.entries(ROUTE_TITLES).find(([route]) =>
@@ -43,14 +44,28 @@ export default function TopBar({ onMenuToggle }: { onMenuToggle: () => void }) {
             </div>
           )}
 
-          <div className="hidden md:flex items-center gap-2 bg-[#111c2a] border border-[#1a2d3d] rounded-lg px-4 w-48 py-2 lg:w-64 focus-within:border-[#00C896]/40 transition-colors">
-            <Search size={15} className="text-[#8b949e] shrink-0" />
-            <input
-              type="text"
-              placeholder="Search..."
-              className="bg-transparent border-none outline-none text-sm text-[#e6edf3] placeholder:text-[#8b949e] w-full"
-            />
-          </div>
+          {isAccounts && (
+            <button className="flex items-center gap-2 px-2 sm:px-4 py-2 rounded-lg bg-transparent border border-[#ffffff1a] text-white text-sm hover:bg-[#ffffff0d] hover:border-[#ffffff33] transition-colors">
+              <RefreshCw size={14} />
+              <span className="hidden sm:block">Sync All</span>
+            </button>
+          )}
+
+          {!isAccounts ? (
+            <div className="hidden md:flex items-center gap-2 bg-[#111c2a] border border-[#1a2d3d] rounded-lg px-4 w-48 py-2 lg:w-64 focus-within:border-[#00C896]/40 transition-colors">
+              <Search size={15} className="text-[#8b949e] shrink-0" />
+              <input
+                type="text"
+                placeholder="Search..."
+                className="bg-transparent border-none outline-none text-sm text-[#e6edf3] placeholder:text-[#8b949e] w-full"
+              />
+            </div>
+          ) : (
+            <button className="flex items-center gap-2 bg-[#14b8a6] text-[#020617] font-semibold px-2 sm:px-4 py-2 rounded-lg text-sm hover:bg-[#0d9488] transition-colors">
+              <Plus width={14} height={14} />
+              <span className="hidden sm:block">Add Bank Account</span>
+            </button>
+          )}
 
           <button
             aria-label="Notifications"
