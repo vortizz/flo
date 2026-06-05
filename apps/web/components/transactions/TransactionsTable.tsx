@@ -1,6 +1,7 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState, useCallback, useEffect } from 'react'
+import { useRouter, usePathname } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
 import { useAuth } from '@clerk/nextjs'
 import { fetchTransactions, type Transaction } from '@/lib/api/transactions'
@@ -36,27 +37,90 @@ function groupByDate(transactions: Transaction[]) {
 
 export default function TransactionsTable() {
   const { getToken } = useAuth()
-  const [page, setPage] = useState(1)
-  const [type, setType] = useState<'DEBIT' | 'CREDIT' | undefined>()
-  const [days, setDays] = useState('30')
+  const router = useRouter()
+  const pathname = usePathname()
+
+  const getInitialParams = () => {
+    if (typeof window === 'undefined') return new URLSearchParams()
+    return new URLSearchParams(window.location.search)
+  }
+
+  const initParams = getInitialParams()
+
+  // Local state — source of truth
+  const [page, setPage] = useState(parseInt(initParams.get('page') ?? '1'))
+  const [search, setSearch] = useState(initParams.get('search') ?? '')
+  const [type, setType] = useState<'DEBIT' | 'CREDIT' | undefined>(
+    (initParams.get('type') as 'DEBIT' | 'CREDIT') || undefined,
+  )
+  const [days, setDays] = useState(initParams.get('days') ?? '30')
+
+  const [accountId, setAccountId] = useState<string | undefined>(
+    initParams.get('accountId') || undefined,
+  )
+  const [category, setCategory] = useState<string | undefined>(
+    initParams.get('category') || undefined,
+  )
   const [customRange, setCustomRange] = useState<
     { from: Date | undefined; to?: Date | undefined } | undefined
-  >()
-  const [accountId, setAccountId] = useState<string | undefined>()
-  const [category, setCategory] = useState<string | undefined>()
-  const [search, setSearch] = useState('')
+  >(() => {
+    const from = initParams.get('from')
+    const to = initParams.get('to')
+    return from && to
+      ? {
+          from: new Date(from + 'T00:00:00.000Z'),
+          to: new Date(to + 'T00:00:00.000Z'),
+        }
+      : undefined
+  })
+
   const debouncedSearch = useDebounce(search, 500)
+
+  // Sync to URL as side effect
+  useEffect(() => {
+    const params = new URLSearchParams()
+    if (page > 1) params.set('page', String(page))
+    if (search) params.set('search', search)
+    if (type) params.set('type', type)
+    if (days !== '30') params.set('days', days)
+    if (accountId) params.set('accountId', accountId)
+    if (category) params.set('category', category)
+    if (days === 'custom' && customRange?.from)
+      params.set('from', customRange.from.toISOString().split('T')[0])
+    if (days === 'custom' && customRange?.to)
+      params.set('to', customRange.to.toISOString().split('T')[0])
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false })
+  }, [
+    page,
+    search,
+    type,
+    days,
+    customRange,
+    accountId,
+    category,
+    pathname,
+    router,
+  ])
 
   const fromStr =
     days === 'custom' && customRange?.from
       ? customRange.from.toISOString().split('T')[0]
-      : new Date(Date.now() - parseInt(days) * 24 * 60 * 60 * 1000)
+      : new Date(Date.now() - (parseInt(days) || 30) * 24 * 60 * 60 * 1000)
           .toISOString()
           .split('T')[0]
+
   const toStr =
     days === 'custom' && customRange?.to
       ? customRange.to.toISOString().split('T')[0]
       : new Date().toISOString().split('T')[0]
+
+  const hasActiveFilters = !!(
+    type ||
+    accountId ||
+    category ||
+    days !== '30' ||
+    search
+  )
 
   const filters = {
     type,
@@ -89,6 +153,17 @@ export default function TransactionsTable() {
     search,
     onSearchChange: (v: string) => {
       setSearch(v)
+      setPage(1)
+    },
+    hasActiveFilters,
+    onClearAll: () => {
+      setPage(1)
+      setSearch('')
+      setType(undefined)
+      setDays('30')
+      setCustomRange(undefined)
+      setAccountId(undefined)
+      setCategory(undefined)
     },
   }
 
@@ -121,10 +196,6 @@ export default function TransactionsTable() {
     staleTime: 0,
     placeholderData: prev => prev,
   })
-
-  useEffect(() => {
-    setPage(1)
-  }, [debouncedSearch])
 
   if (isLoading && !data) {
     return (
@@ -162,7 +233,6 @@ export default function TransactionsTable() {
           isFetching ? 'opacity-60' : 'opacity-100',
         ].join(' ')}
       >
-        {/* Table header */}
         <div className="hidden md:grid grid-cols-[1fr_2fr_1.5fr_1fr_1fr] gap-4 px-6 py-3 border-b border-[#1a2d3d]">
           {['Date', 'Merchant', 'Category', 'Account', 'Amount'].map(h => (
             <span
@@ -177,7 +247,6 @@ export default function TransactionsTable() {
           ))}
         </div>
 
-        {/* Empty state */}
         {data.data.length === 0 && (
           <div className="flex flex-col items-center justify-center py-16 gap-2">
             <p className="text-sm font-medium text-white">
@@ -187,7 +256,6 @@ export default function TransactionsTable() {
           </div>
         )}
 
-        {/* Grouped rows */}
         {[...grouped.entries()].map(([date, txs]) => (
           <div key={date}>
             <div className="px-6 py-2 bg-[#071828] border-b border-[#1a2d3d]">
@@ -201,7 +269,6 @@ export default function TransactionsTable() {
           </div>
         ))}
 
-        {/* Footer */}
         {data.data.length > 0 && (
           <div className="flex items-center justify-between px-6 py-4">
             <span className="text-sm text-[#94a3b8]">
