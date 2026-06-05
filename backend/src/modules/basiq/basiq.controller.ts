@@ -113,6 +113,7 @@ export class BasiqController {
           bankName: institution?.name || account.institution,
           accountName: account.displayName || account.name,
           balance: account.balance || 0,
+          basiqConnectionId: account.connection ?? null,
           last4,
           lastSyncedAt: new Date(),
         },

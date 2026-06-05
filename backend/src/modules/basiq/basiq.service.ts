@@ -230,4 +230,21 @@ export class BasiqService {
       source: SourceType.BASIQ,
     }
   }
+
+  async revokeConnection(
+    basiqUserId: string,
+    connectionId: string,
+  ): Promise<void> {
+    const token = await this.getAccessToken()
+    try {
+      await this.axiosInstance.delete(
+        `/users/${basiqUserId}/connections/${connectionId}`,
+        { headers: { Authorization: `Bearer ${token}` } },
+      )
+      this.logger.log(`Revoked Basiq connection: ${connectionId}`)
+    } catch (error) {
+      this.logger.error(`Failed to revoke Basiq connection: ${error}`)
+      throw error
+    }
+  }
 }

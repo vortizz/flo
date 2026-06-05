@@ -1,10 +1,12 @@
-import { Injectable } from '@nestjs/common'
+import { Injectable, Logger } from '@nestjs/common'
 import { PrismaService } from '../../prisma.service'
 import { BasiqService } from '../basiq/basiq.service'
 import { SourceType } from '@prisma/client'
 
 @Injectable()
 export class AccountsService {
+  private readonly logger = new Logger(AccountsService.name)
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly basiqService: BasiqService,
@@ -60,6 +62,29 @@ export class AccountsService {
 
     if (!account) throw new Error('Account not found')
 
+    if (user.basiqUserId && account.basiqConnectionId) {
+      const sharedCount = await this.prisma.account.count({
+        where: {
+          userId: user.id,
+          basiqConnectionId: account.basiqConnectionId,
+          id: { not: accountId },
+        },
+      })
+
+      if (sharedCount === 0) {
+        try {
+          await this.basiqService.revokeConnection(
+            user.basiqUserId,
+            account.basiqConnectionId,
+          )
+        } catch (error) {
+          this.logger.warn(
+            `Failed to revoke Basiq connection, proceeding with local delete: ${error}`,
+          )
+        }
+      }
+    }
+
     await this.prisma.account.delete({ where: { id: accountId } })
 
     return { success: true }
@@ -90,39 +115,32 @@ export class AccountsService {
       t => t.account === account.basiqId,
     )
 
-    let synced = 0
-    for (const tx of accountTransactions) {
-      const normalised = this.basiqService.normaliseTransaction(tx, account.id)
-      await this.prisma.transaction.upsert({
-        where: { basiqId: tx.id },
-        update: {
-          merchant: normalised.merchant,
-          category: normalised.category,
-          description: normalised.description,
-          raw: normalised.raw,
-        },
-        create: {
-          basiqId: normalised.basiqId,
-          accountId: normalised.accountId,
-          amount: normalised.amount,
-          type: normalised.type,
-          merchant: normalised.merchant,
-          category: normalised.category,
-          description: normalised.description,
-          date: normalised.date,
-          raw: normalised.raw,
-          source: SourceType.BASIQ,
-        },
-      })
-      synced++
-    }
+    const normalisedTxs = accountTransactions.map(tx =>
+      this.basiqService.normaliseTransaction(tx, account.id),
+    )
+
+    const result = await this.prisma.transaction.createMany({
+      data: normalisedTxs.map(t => ({
+        basiqId: t.basiqId,
+        accountId: t.accountId,
+        amount: t.amount,
+        type: t.type,
+        merchant: t.merchant,
+        category: t.category,
+        description: t.description,
+        date: t.date,
+        raw: t.raw,
+        source: SourceType.BASIQ,
+      })),
+      skipDuplicates: true,
+    })
 
     await this.prisma.account.update({
       where: { id: accountId },
       data: { lastSyncedAt: new Date() },
     })
 
-    return { synced }
+    return { synced: result.count }
   }
 
   async syncAllAccounts(clerkId: string) {
