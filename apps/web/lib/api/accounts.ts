@@ -30,3 +30,18 @@ export async function fetchAccounts(
   if (!res.ok) throw new Error('Failed to fetch accounts')
   return res.json()
 }
+
+export async function deleteAccount(
+  id: string,
+  getToken: () => Promise<string | null>,
+): Promise<void> {
+  const token = await getToken()
+  const res = await fetch(
+    `${process.env.NEXT_PUBLIC_API_URL}/api/accounts/${id}`,
+    {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` },
+    },
+  )
+  if (!res.ok) throw new Error('Failed to disconnect account')
+}

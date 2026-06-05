@@ -43,4 +43,20 @@ export class AccountsService {
       })),
     }
   }
+
+  async deleteAccount(clerkId: string, accountId: string) {
+    const user = await this.prisma.user.findUniqueOrThrow({
+      where: { clerkId },
+    })
+
+    const account = await this.prisma.account.findFirst({
+      where: { id: accountId, userId: user.id },
+    })
+
+    if (!account) throw new Error('Account not found')
+
+    await this.prisma.account.delete({ where: { id: accountId } })
+
+    return { success: true }
+  }
 }
