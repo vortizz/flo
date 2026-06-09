@@ -14,8 +14,10 @@ import { Webhook } from 'svix'
 import { Public } from '../auth/auth.decorator'
 import { FastifyRequest } from 'fastify'
 
+type ClerkUserEvent = 'user.created' | 'user.updated' | 'user.deleted'
+
 interface ClerkUserCreatedEvent {
-  type: string
+  type: ClerkUserEvent
   data: {
     id: string
     email_addresses: Array<{
@@ -118,29 +120,29 @@ export class UsersController {
       this.logger.log(`User created from webhook: ${id}`)
     }
 
-    // if (event.type === 'user.updated') {
-    //   const {
-    //     id,
-    //     first_name,
-    //     last_name,
-    //     image_url,
-    //     phone_numbers,
-    //     primary_phone_number_id,
-    //   } = event.data
+    if (event.type === 'user.updated') {
+      const {
+        id,
+        first_name,
+        last_name,
+        image_url,
+        // phone_numbers,
+        // primary_phone_number_id,
+      } = event.data
 
-    //   const primaryPhone = phone_numbers?.find(
-    //     p => p.id === primary_phone_number_id,
-    //   )
+      // const primaryPhone = phone_numbers?.find(
+      //   p => p.id === primary_phone_number_id,
+      // )
 
-    //   await this.usersService.updateUser(id, {
-    //     fullName:
-    //       [first_name, last_name].filter(Boolean).join(' ') || undefined,
-    //     avatarUrl: image_url || undefined,
-    //     mobile: primaryPhone?.phone_number || undefined,
-    //   })
+      await this.usersService.updateUser(id, {
+        fullName:
+          [first_name, last_name].filter(Boolean).join(' ') || undefined,
+        avatarUrl: image_url || undefined,
+        // mobile: primaryPhone?.phone_number || undefined,
+      })
 
-    //   this.logger.log(`User updated from webhook: ${id}`)
-    // }
+      this.logger.log(`User updated from webhook: ${id}`)
+    }
 
     return { received: true }
   }
