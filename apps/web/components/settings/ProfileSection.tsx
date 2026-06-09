@@ -1,52 +1,76 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useState, useRef } from 'react'
 import { useUser } from '@clerk/nextjs'
 import { Camera } from 'lucide-react'
 import Image from 'next/image'
+import { Toast } from '@/components/ui/Toast'
 
 export default function ProfileSection() {
   const { user, isLoaded } = useUser()
   const [firstName, setFirstName] = useState<string | null>(null)
   const [lastName, setLastName] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
-  const [saved, setSaved] = useState(false)
-  const fileInputRef = useRef<HTMLInputElement>(null)
   const [uploadingPhoto, setUploadingPhoto] = useState(false)
+  const [toast, setToast] = useState<{
+    message: string
+    type: 'success' | 'error'
+  } | null>(null)
+  const [errors, setErrors] = useState<{
+    firstName?: string
+    lastName?: string
+  }>({})
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const displayFirstName = firstName ?? user?.firstName ?? ''
   const displayLastName = lastName ?? user?.lastName ?? ''
 
-  async function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    if (!file) return
-
-    setUploadingPhoto(true)
-    try {
-      await user?.setProfileImage({ file })
-    } catch (err) {
-      console.error(err)
-    } finally {
-      setUploadingPhoto(false)
-      e.target.value = ''
-    }
+  function validate() {
+    const errs: typeof errors = {}
+    if (!displayFirstName.trim()) errs.firstName = 'First name is required'
+    if (!displayLastName.trim()) errs.lastName = 'Last name is required'
+    setErrors(errs)
+    return Object.keys(errs).length === 0
   }
 
   async function handleSave() {
+    if (!validate()) return
     setSaving(true)
     try {
       await user?.update({
         firstName: displayFirstName,
         lastName: displayLastName,
       })
-      setSaved(true)
       setFirstName(null)
       setLastName(null)
-      setTimeout(() => setSaved(false), 2000)
+      setToast({ message: 'Profile updated successfully', type: 'success' })
     } catch (e) {
       console.error(e)
+      setToast({
+        message: 'Failed to update profile. Please try again.',
+        type: 'error',
+      })
     } finally {
       setSaving(false)
+    }
+  }
+
+  async function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploadingPhoto(true)
+    try {
+      await user?.setProfileImage({ file })
+      setToast({ message: 'Profile photo updated', type: 'success' })
+    } catch (err) {
+      console.error(err)
+      setToast({
+        message: 'Failed to upload photo. Please try again.',
+        type: 'error',
+      })
+    } finally {
+      setUploadingPhoto(false)
+      e.target.value = ''
     }
   }
 
@@ -55,16 +79,16 @@ export default function ProfileSection() {
       <h2 className="text-sm font-semibold text-white">Profile Information</h2>
 
       <div className="bg-[#0d1f2d] border border-[#1a2d3d] rounded-xl p-6 flex flex-col gap-6">
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={handlePhotoChange}
+        />
+
         {/* Avatar */}
         <div className="flex items-center gap-4">
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={handlePhotoChange}
-          />
-
           <div className="relative">
             {user?.imageUrl ? (
               <Image
@@ -107,9 +131,19 @@ export default function ProfileSection() {
             <input
               type="text"
               value={displayFirstName}
-              onChange={e => setFirstName(e.target.value)}
-              className="bg-[#111c2a] border border-[#1a2d3d] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#00C896]/40 transition-colors"
+              onChange={e => {
+                setFirstName(e.target.value)
+                setErrors(p => ({ ...p, firstName: undefined }))
+              }}
+              className={`bg-[#111c2a] border rounded-lg px-3 py-2 text-sm text-white focus:outline-none transition-colors ${
+                errors.firstName
+                  ? 'border-red-400'
+                  : 'border-[#1a2d3d] focus:border-[#00C896]/40'
+              }`}
             />
+            {errors.firstName && (
+              <p className="text-xs text-red-400">{errors.firstName}</p>
+            )}
           </div>
           <div className="flex flex-col gap-1.5">
             <label className="text-xs text-[#8b949e] font-medium">
@@ -118,9 +152,19 @@ export default function ProfileSection() {
             <input
               type="text"
               value={displayLastName}
-              onChange={e => setLastName(e.target.value)}
-              className="bg-[#111c2a] border border-[#1a2d3d] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#00C896]/40 transition-colors"
+              onChange={e => {
+                setLastName(e.target.value)
+                setErrors(p => ({ ...p, lastName: undefined }))
+              }}
+              className={`bg-[#111c2a] border rounded-lg px-3 py-2 text-sm text-white focus:outline-none transition-colors ${
+                errors.lastName
+                  ? 'border-red-400'
+                  : 'border-[#1a2d3d] focus:border-[#00C896]/40'
+              }`}
             />
+            {errors.lastName && (
+              <p className="text-xs text-red-400">{errors.lastName}</p>
+            )}
           </div>
         </div>
 
@@ -143,10 +187,18 @@ export default function ProfileSection() {
             disabled={saving || !isLoaded}
             className="px-4 py-2 rounded-lg bg-[#00C896] text-[#040e1a] text-sm font-semibold hover:bg-[#00C896]/90 transition-colors disabled:opacity-50"
           >
-            {saved ? 'Saved!' : saving ? 'Saving...' : 'Save Changes'}
+            {saving ? 'Saving...' : 'Save Changes'}
           </button>
         </div>
       </div>
+
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
     </section>
   )
 }
