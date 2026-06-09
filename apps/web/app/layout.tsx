@@ -21,8 +21,11 @@ const inter = Inter({
 })
 
 export const metadata: Metadata = {
-  title: 'Flo — Your money, always in flow',
+  title: 'Flo',
   description: 'Track your finances in real time across all your accounts',
+  icons: {
+    icon: '/favicon.svg',
+  },
 }
 
 export default function RootLayout({
