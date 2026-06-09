@@ -9,8 +9,8 @@ export default function CtaSection() {
       className="relative h-screen snap-start flex flex-col items-center justify-center bg-[#040e1a] px-4 md:px-8 lg:px-12"
       style={{ scrollSnapAlign: 'start' }}
     >
-      <div className="max-w-[800px] mx-auto w-full flex-1 flex items-center justify-center">
-        <div className="bg-[#0d1f2d] border border-[#1a2d3d] rounded-[20px] py-12 md:py-[60px] px-6 md:px-12 text-center w-full">
+      <div className="max-w-200 mx-auto w-full flex-1 flex items-center justify-center">
+        <div className="bg-[#0d1f2d] border border-[#1a2d3d] rounded-[20px] py-12 md:py-15 px-6 md:px-12 text-center w-full">
           <h2 className="text-3xl md:text-4xl font-bold text-white mb-3 tracking-[-0.5px]">
             Start understanding your money today
           </h2>

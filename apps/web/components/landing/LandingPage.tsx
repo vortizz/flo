@@ -64,7 +64,7 @@ export default function LandingPage() {
       style={{ scrollSnapType: 'y mandatory' }}
     >
       {/* Nav */}
-      <nav className="fixed top-0 left-0 right-0 z-[100] px-4 md:px-8 lg:px-12 py-4 border-b border-[#1a2d3d] bg-[#040e1a]/95 backdrop-blur-sm">
+      <nav className="fixed top-0 left-0 right-0 z-100 px-4 md:px-8 lg:px-12 py-4 border-b border-[#1a2d3d] bg-[#040e1a]/95 backdrop-blur-sm">
         <div className="grid grid-cols-2 lg:grid-cols-3 items-center">
           <div className="flex items-center gap-2 justify-self-start">
             <FloLogo size={32} />

@@ -1,6 +1,6 @@
 export default function DashboardPreview() {
   return (
-    <div className="w-full max-w-[780px]">
+    <div className="w-full max-w-195">
       <div className="bg-[#0d1f2d] border border-[#1a2d3d] rounded-[14px] overflow-hidden">
         <div className="px-4 py-3 border-b border-[#1a2d3d] flex items-center justify-between">
           <div className="flex gap-1.5">

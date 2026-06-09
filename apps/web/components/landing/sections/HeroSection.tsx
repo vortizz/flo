@@ -34,7 +34,7 @@ export default function HeroSection({ onScrollToSection }: HeroSectionProps) {
       className="relative h-screen snap-start flex flex-col items-center justify-center bg-[#040e1a] px-4 md:px-8 lg:px-12"
       style={{ scrollSnapAlign: 'start' }}
     >
-      <div className="max-w-[900px] mx-auto text-center flex flex-col items-center gap-5 md:gap-6">
+      <div className="max-w-225 mx-auto text-center flex flex-col items-center gap-5 md:gap-6">
         <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium border border-[#14b8a64d] bg-[#0f172a99] text-[#5eead4]">
           <span className="w-1.5 h-1.5 rounded-full bg-[#00C896] animate-pulse" />
           Open Banking · Read-only

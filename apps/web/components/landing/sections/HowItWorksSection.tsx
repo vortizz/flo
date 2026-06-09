@@ -25,20 +25,20 @@ export default function HowItWorksSection() {
       className="relative h-screen snap-start flex flex-col items-center justify-center bg-[#040e1a] px-0 md:px-8 lg:px-12 pt-20"
       style={{ scrollSnapAlign: 'start' }}
     >
-      <div className="max-w-[900px] mx-auto w-full px-4 md:px-0">
+      <div className="max-w-225 mx-auto w-full px-4 md:px-0">
         <div className="text-xs text-[#00C896] font-semibold tracking-widest uppercase mb-3 text-center">
           How it works
         </div>
         <h2 className="text-2xl md:text-[38px] font-bold text-white text-center tracking-[-0.5px] mb-3">
           Up and running in under 5 minutes
         </h2>
-        <p className="text-sm md:text-base text-[#8b949e] text-center max-w-[560px] mx-auto mb-6 md:mb-12 leading-relaxed">
+        <p className="text-sm md:text-base text-[#8b949e] text-center max-w-140 mx-auto mb-6 md:mb-12 leading-relaxed">
           No spreadsheets, no manual entry. Just connect your accounts and Flo
           handles the rest.
         </p>
       </div>
       <HowItWorksCarousel steps={STEPS} />
-      <div className="hidden md:grid max-w-[900px] mx-auto w-full grid-cols-3 gap-6 relative px-8 lg:px-0">
+      <div className="hidden md:grid max-w-225 mx-auto w-full grid-cols-3 gap-6 relative px-8 lg:px-0">
         <div className="absolute top-7 left-[16.6%] right-[16.6%] h-px bg-[#1a2d3d] z-0" />
         {STEPS.map((s, i) => (
           <div

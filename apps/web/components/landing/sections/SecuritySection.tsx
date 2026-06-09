@@ -52,7 +52,7 @@ export default function SecuritySection() {
       className="relative h-screen snap-start flex flex-col items-center justify-center bg-[#040e1a] px-4 md:px-8 lg:px-12"
       style={{ scrollSnapAlign: 'start' }}
     >
-      <div className="max-w-[1100px] mx-auto w-full">
+      <div className="max-w-275 mx-auto w-full">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-12 items-center">
           <div className="flex flex-col gap-5">
             <div className="text-xs text-[#00C896] font-semibold tracking-widest uppercase">

@@ -52,20 +52,20 @@ export default function FeaturesSection() {
       className="relative h-screen snap-start flex flex-col items-center justify-center bg-[#040e1a] px-0 md:px-8 lg:px-12 pt-20"
       style={{ scrollSnapAlign: 'start' }}
     >
-      <div className="max-w-[1100px] mx-auto w-full px-4 md:px-0">
+      <div className="max-w-275 mx-auto w-full px-4 md:px-0">
         <div className="text-xs text-[#00C896] font-semibold tracking-widest uppercase mb-3 text-center">
           Features
         </div>
         <h2 className="text-2xl md:text-[38px] font-bold text-white text-center tracking-[-0.5px] mb-3">
           Everything you need to understand your money
         </h2>
-        <p className="text-sm md:text-base text-[#8b949e] text-center max-w-[560px] mx-auto mb-6 md:mb-10 leading-relaxed">
+        <p className="text-sm md:text-base text-[#8b949e] text-center max-w-140 mx-auto mb-6 md:mb-10 leading-relaxed">
           Flo turns raw bank data into clear, actionable insights — so you spend
           less time wondering and more time deciding.
         </p>
       </div>
       <FeaturesCarousel features={FEATURES} />
-      <div className="hidden lg:grid max-w-[1100px] mx-auto w-full grid-cols-3 gap-5 px-0">
+      <div className="hidden lg:grid max-w-275 mx-auto w-full grid-cols-3 gap-5 px-0">
         {FEATURES.map(f => (
           <FeatureCard key={f.title} {...f} />
         ))}
