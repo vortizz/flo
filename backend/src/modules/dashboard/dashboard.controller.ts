@@ -45,4 +45,9 @@ export class DashboardController {
       query.to,
     )
   }
+
+  @Get('accounts')
+  getDashboardAccounts(@Request() req: any) {
+    return this.dashboardService.getDashboardAccounts(req.user.userId)
+  }
 }

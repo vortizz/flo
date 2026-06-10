@@ -289,4 +289,64 @@ export class DashboardService {
       previous: { from: prevFrom, to: endOfDay(prevTo) },
     }
   }
+
+  async getDashboardAccounts(clerkId: string) {
+    const user = await this.prisma.user.findUniqueOrThrow({
+      where: { clerkId },
+    })
+
+    const today = new Date()
+    const startOfDay = new Date(
+      today.getFullYear(),
+      today.getMonth(),
+      today.getDate(),
+    )
+    const endOfDay = new Date(
+      today.getFullYear(),
+      today.getMonth(),
+      today.getDate(),
+      23,
+      59,
+      59,
+      999,
+    )
+
+    const accounts = await this.prisma.account.findMany({
+      where: { userId: user.id },
+      include: {
+        institution: { select: { name: true, logoUrl: true } },
+        transactions: {
+          where: { date: { gte: startOfDay, lte: endOfDay } },
+          select: { amount: true, type: true },
+        },
+      },
+      orderBy: { createdAt: 'asc' },
+    })
+
+    const totalBalance = accounts.reduce((sum, a) => sum + Number(a.balance), 0)
+
+    return {
+      totalBalance: Math.round(totalBalance * 100) / 100,
+      totalAccounts: accounts.length,
+      accounts: accounts.map(a => {
+        const todayCredit = a.transactions
+          .filter(t => t.type === 'CREDIT')
+          .reduce((sum, t) => sum + Number(t.amount), 0)
+        const todayDebit = a.transactions
+          .filter(t => t.type === 'DEBIT')
+          .reduce((sum, t) => sum + Number(t.amount), 0)
+        const dailyChange = Math.round((todayCredit - todayDebit) * 100) / 100
+
+        return {
+          id: a.id,
+          bankName: a.bankName,
+          accountName: a.accountName,
+          last4: a.last4,
+          balance: Number(a.balance),
+          logoUrl: a.institution?.logoUrl ?? null,
+          dailyChange,
+        }
+      }),
+    }
+  }
 }

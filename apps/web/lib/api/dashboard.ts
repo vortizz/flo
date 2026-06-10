@@ -39,6 +39,22 @@ export interface RecentTransaction {
   account: string
 }
 
+export interface DashboardAccount {
+  id: string
+  bankName: string
+  accountName: string
+  last4: string | null
+  balance: number
+  logoUrl: string | null
+  dailyChange: number
+}
+
+export interface DashboardAccountsResponse {
+  totalBalance: number
+  totalAccounts: number
+  accounts: DashboardAccount[]
+}
+
 export async function fetchSummary(
   period: string,
   getToken: () => Promise<string | null>,
@@ -108,5 +124,17 @@ export async function fetchRecentTransactions(
     { headers: { Authorization: `Bearer ${token}` } },
   )
   if (!res.ok) throw new Error('Failed to fetch recent transactions')
+  return res.json()
+}
+
+export async function fetchDashboardAccounts(
+  getToken: () => Promise<string | null>,
+): Promise<DashboardAccountsResponse> {
+  const token = await getToken()
+  const res = await fetch(
+    `${process.env.NEXT_PUBLIC_API_URL}/api/dashboard/accounts`,
+    { headers: { Authorization: `Bearer ${token}` } },
+  )
+  if (!res.ok) throw new Error('Failed to fetch dashboard accounts')
   return res.json()
 }
