@@ -44,8 +44,13 @@ export default function CategoryChart() {
   const { getToken } = useAuth()
 
   const apiPeriod = PERIOD_MAP[period] ?? 'month'
-  const fromStr = customRange?.from?.toISOString().split('T')[0]
-  const toStr = customRange?.to?.toISOString().split('T')[0]
+  const fromStr = customRange?.from
+    ? `${customRange.from.getFullYear()}-${String(customRange.from.getMonth() + 1).padStart(2, '0')}-${String(customRange.from.getDate()).padStart(2, '0')}`
+    : undefined
+
+  const toStr = customRange?.to
+    ? `${customRange.to.getFullYear()}-${String(customRange.to.getMonth() + 1).padStart(2, '0')}-${String(customRange.to.getDate()).padStart(2, '0')}`
+    : undefined
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ['dashboard-categories', apiPeriod, fromStr, toStr],
@@ -57,7 +62,7 @@ export default function CategoryChart() {
 
   if (isError || !data || data.length === 0) {
     return (
-      <div className="bg-[#0d1f2d] border border-[#1a2d3d] rounded-xl p-5 flex items-center justify-center h-48">
+      <div className="bg-[#0d1f2d] border border-[#1a2d3d] rounded-xl p-5 flex items-center justify-center h-full">
         <p className="text-sm text-[#8b949e]">
           No spending data for this period.
         </p>
@@ -74,8 +79,8 @@ export default function CategoryChart() {
         <p className="text-xs text-[#8b949e]">Top categories this period</p>
       </div>
 
-      <div className="flex flex-col md:flex-row items-center gap-1">
-        <div className="w-full md:w-64 h-64 shrink-0 **:outline-none">
+      <div className="flex flex-col items-center gap-1">
+        <div className="w-full md:w-52 h-52 shrink-0 **:outline-none">
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Pie

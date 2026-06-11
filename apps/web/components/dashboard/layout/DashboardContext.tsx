@@ -48,8 +48,8 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
   const customRange: DateRange | undefined =
     fromParam && toParam
       ? {
-          from: new Date(fromParam + 'T00:00:00.000Z'),
-          to: new Date(toParam + 'T00:00:00.000Z'),
+          from: new Date(fromParam + 'T00:00:00'),
+          to: new Date(toParam + 'T00:00:00'),
         }
       : undefined
 
@@ -70,9 +70,20 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     (range: DateRange | undefined) => {
       const params = new URLSearchParams(searchParams.toString())
       params.set('period', 'custom')
-      if (range?.from)
-        params.set('from', range.from.toISOString().split('T')[0])
-      if (range?.to) params.set('to', range.to.toISOString().split('T')[0])
+      if (range?.from) {
+        const f = range.from
+        params.set(
+          'from',
+          `${f.getFullYear()}-${String(f.getMonth() + 1).padStart(2, '0')}-${String(f.getDate()).padStart(2, '0')}`,
+        )
+      }
+      if (range?.to) {
+        const t = range.to
+        params.set(
+          'to',
+          `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`,
+        )
+      }
       router.push(`${pathname}?${params.toString()}`)
     },
     [router, pathname, searchParams],

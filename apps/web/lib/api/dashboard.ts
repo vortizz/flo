@@ -67,7 +67,12 @@ export async function fetchSummary(
   if (to) params.set('to', to)
   const res = await fetch(
     `${process.env.NEXT_PUBLIC_API_URL}/api/dashboard/summary?${params}`,
-    { headers: { Authorization: `Bearer ${token}` } },
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'x-timezone': Intl.DateTimeFormat().resolvedOptions().timeZone,
+      },
+    },
   )
   if (!res.ok) throw new Error('Failed to fetch summary')
   return res.json()
@@ -85,9 +90,37 @@ export async function fetchChart(
   if (to) params.set('to', to)
   const res = await fetch(
     `${process.env.NEXT_PUBLIC_API_URL}/api/dashboard/chart?${params}`,
-    { headers: { Authorization: `Bearer ${token}` } },
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'x-timezone': Intl.DateTimeFormat().resolvedOptions().timeZone,
+      },
+    },
   )
   if (!res.ok) throw new Error('Failed to fetch chart data')
+  return res.json()
+}
+
+export async function fetchChartSummary(
+  period: string,
+  getToken: () => Promise<string | null>,
+  from?: string,
+  to?: string,
+): Promise<{ date: string; income: number; expenses: number }[]> {
+  const token = await getToken()
+  const params = new URLSearchParams({ period })
+  if (from) params.set('from', from)
+  if (to) params.set('to', to)
+  const res = await fetch(
+    `${process.env.NEXT_PUBLIC_API_URL}/api/dashboard/chart/summary?${params}`,
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'x-timezone': Intl.DateTimeFormat().resolvedOptions().timeZone,
+      },
+    },
+  )
+  if (!res.ok) throw new Error('Failed to fetch chart summary')
   return res.json()
 }
 
@@ -103,7 +136,12 @@ export async function fetchCategories(
   if (to) params.set('to', to)
   const res = await fetch(
     `${process.env.NEXT_PUBLIC_API_URL}/api/dashboard/categories?${params}`,
-    { headers: { Authorization: `Bearer ${token}` } },
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'x-timezone': Intl.DateTimeFormat().resolvedOptions().timeZone,
+      },
+    },
   )
   if (!res.ok) throw new Error('Failed to fetch categories')
   return res.json()
@@ -121,7 +159,12 @@ export async function fetchRecentTransactions(
   if (to) params.set('to', to)
   const res = await fetch(
     `${process.env.NEXT_PUBLIC_API_URL}/api/dashboard/recent-transactions?${params}`,
-    { headers: { Authorization: `Bearer ${token}` } },
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'x-timezone': Intl.DateTimeFormat().resolvedOptions().timeZone,
+      },
+    },
   )
   if (!res.ok) throw new Error('Failed to fetch recent transactions')
   return res.json()
@@ -133,7 +176,12 @@ export async function fetchDashboardAccounts(
   const token = await getToken()
   const res = await fetch(
     `${process.env.NEXT_PUBLIC_API_URL}/api/dashboard/accounts`,
-    { headers: { Authorization: `Bearer ${token}` } },
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'x-timezone': Intl.DateTimeFormat().resolvedOptions().timeZone,
+      },
+    },
   )
   if (!res.ok) throw new Error('Failed to fetch dashboard accounts')
   return res.json()

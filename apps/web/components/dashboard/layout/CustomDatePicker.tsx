@@ -9,6 +9,8 @@ interface CustomDatePickerProps {
   onSelect: (range: DateRange | undefined) => void
 }
 
+const MAX_DAYS = 365
+
 const QUICK_SELECTS = [
   { label: 'Last 7d', days: 7 },
   { label: 'Last 30d', days: 30 },
@@ -20,34 +22,36 @@ const QUICK_SELECTS = [
 
 const WEEKDAYS = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su']
 
-function getQuickRange(opt: (typeof QUICK_SELECTS)[number]): DateRange {
+function localToday(): Date {
   const now = new Date()
-  const todayUTC = new Date(
-    Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()),
-  )
+  return new Date(now.getFullYear(), now.getMonth(), now.getDate())
+}
+
+function getQuickRange(opt: (typeof QUICK_SELECTS)[number]): DateRange {
+  const today = localToday()
 
   if (opt.type === 'thisMonth') {
     return {
-      from: new Date(Date.UTC(now.getFullYear(), now.getMonth(), 1)),
-      to: todayUTC,
+      from: new Date(today.getFullYear(), today.getMonth(), 1),
+      to: today,
     }
   }
   if (opt.type === 'lastMonth') {
     return {
-      from: new Date(Date.UTC(now.getFullYear(), now.getMonth() - 1, 1)),
-      to: new Date(Date.UTC(now.getFullYear(), now.getMonth(), 0)),
+      from: new Date(today.getFullYear(), today.getMonth() - 1, 1),
+      to: new Date(today.getFullYear(), today.getMonth(), 0),
     }
   }
   if (opt.type === 'ytd') {
     return {
-      from: new Date(Date.UTC(now.getFullYear(), 0, 1)),
-      to: todayUTC,
+      from: new Date(today.getFullYear(), 0, 1),
+      to: today,
     }
   }
 
-  const from = new Date(todayUTC)
-  from.setUTCDate(todayUTC.getUTCDate() - opt.days + 1)
-  return { from, to: todayUTC }
+  const from = new Date(today)
+  from.setDate(today.getDate() - opt.days + 1)
+  return { from, to: today }
 }
 
 function getDaysInMonth(year: number, month: number) {
@@ -56,14 +60,14 @@ function getDaysInMonth(year: number, month: number) {
 
 function getFirstDayOfMonth(year: number, month: number) {
   const day = new Date(year, month, 1).getDay()
-  return day === 0 ? 6 : day - 1 // Mon = 0
+  return day === 0 ? 6 : day - 1
 }
 
 function isSameDay(a: Date, b: Date) {
   return (
-    a.getUTCFullYear() === b.getUTCFullYear() &&
-    a.getUTCMonth() === b.getUTCMonth() &&
-    a.getUTCDate() === b.getUTCDate()
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate()
   )
 }
 
@@ -88,6 +92,7 @@ export default function CustomDatePicker({
     from: undefined,
     to: undefined,
   })
+  const [rangeError, setRangeError] = useState<string | undefined>()
   const [viewYear, setViewYear] = useState(new Date().getFullYear())
   const [viewMonth, setViewMonth] = useState(new Date().getMonth())
   const ref = useRef<HTMLDivElement>(null)
@@ -104,19 +109,30 @@ export default function CustomDatePicker({
 
   function handleOpen() {
     setLocalRange(selected ?? { from: undefined, to: undefined })
+    setRangeError(undefined)
     setOpen(v => !v)
   }
 
   function handleDayClick(date: Date) {
+    setRangeError(undefined)
+
     if (!localRange.from || (localRange.from && localRange.to)) {
       setLocalRange({ from: date, to: undefined })
     } else {
-      if (date < localRange.from) {
-        setLocalRange({ from: date, to: localRange.from })
-      } else {
-        setLocalRange({ from: localRange.from, to: date })
+      const from = date < localRange.from ? date : localRange.from
+      const to = date < localRange.from ? localRange.from : date
+      const days = diffDays(from, to)
+      if (days > MAX_DAYS) {
+        setRangeError(`Max range is ${MAX_DAYS} days`)
+        return
       }
+      setLocalRange({ from, to })
     }
+  }
+
+  function handleQuickSelect(opt: (typeof QUICK_SELECTS)[number]) {
+    setRangeError(undefined)
+    setLocalRange(getQuickRange(opt))
   }
 
   function handleApply() {
@@ -128,6 +144,7 @@ export default function CustomDatePicker({
 
   function handleClear() {
     setLocalRange({ from: undefined, to: undefined })
+    setRangeError(undefined)
     onSelect(undefined)
   }
 
@@ -152,10 +169,7 @@ export default function CustomDatePicker({
 
   const daysInMonth = getDaysInMonth(viewYear, viewMonth)
   const firstDay = getFirstDayOfMonth(viewYear, viewMonth)
-  const today = new Date()
-  const todayUTC = new Date(
-    Date.UTC(today.getFullYear(), today.getMonth(), today.getDate()),
-  )
+  const today = localToday()
 
   const monthName = new Date(viewYear, viewMonth).toLocaleDateString('en-AU', {
     month: 'long',
@@ -188,7 +202,7 @@ export default function CustomDatePicker({
               {QUICK_SELECTS.map(opt => (
                 <button
                   key={opt.label}
-                  onClick={() => setLocalRange(getQuickRange(opt))}
+                  onClick={() => handleQuickSelect(opt)}
                   className="px-2.5 py-1 rounded-lg text-xs text-[#8b949e] border border-transparent hover:bg-[#ffffff0a] hover:text-[#f8fafc] hover:border-[#1a2d3d] transition-colors"
                 >
                   {opt.label}
@@ -199,7 +213,6 @@ export default function CustomDatePicker({
 
           {/* Calendar */}
           <div className="flex flex-col gap-2 border-t border-[#1a2d3d] pt-4">
-            {/* Header */}
             <div className="flex items-center justify-between">
               <button
                 onClick={prevMonth}
@@ -218,7 +231,6 @@ export default function CustomDatePicker({
               </button>
             </div>
 
-            {/* Weekday headers */}
             <div className="grid grid-cols-7 mb-1">
               {WEEKDAYS.map(d => (
                 <div
@@ -230,16 +242,14 @@ export default function CustomDatePicker({
               ))}
             </div>
 
-            {/* Days grid */}
             <div className="grid grid-cols-7 gap-0.5">
-              {/* Empty cells for first day offset */}
               {Array.from({ length: firstDay }).map((_, i) => (
                 <div key={`empty-${i}`} />
               ))}
 
               {Array.from({ length: daysInMonth }).map((_, i) => {
                 const day = i + 1
-                const date = new Date(Date.UTC(viewYear, viewMonth, day))
+                const date = new Date(viewYear, viewMonth, day)
                 const isFrom =
                   localRange.from && isSameDay(date, localRange.from)
                 const isTo = localRange.to && isSameDay(date, localRange.to)
@@ -247,8 +257,8 @@ export default function CustomDatePicker({
                   localRange.from &&
                   localRange.to &&
                   isInRange(date, localRange.from, localRange.to)
-                const isToday = isSameDay(date, todayUTC)
-                const isFuture = date > todayUTC
+                const isToday = isSameDay(date, today)
+                const isFuture = date > today
 
                 return (
                   <button
@@ -282,12 +292,15 @@ export default function CustomDatePicker({
           </div>
 
           <div className="text-center text-xs text-[#8b949e]">
-            {localRange.from && localRange.to
-              ? `${diffDays(localRange.from, localRange.to)} days selected`
-              : 'No range selected'}
+            {rangeError ? (
+              <span className="text-red-400">{rangeError}</span>
+            ) : localRange.from && localRange.to ? (
+              `${diffDays(localRange.from, localRange.to)} days selected`
+            ) : (
+              'No range selected'
+            )}
           </div>
 
-          {/* Footer */}
           <div className="flex items-center justify-between pt-2">
             <button
               onClick={handleClear}
@@ -298,7 +311,6 @@ export default function CustomDatePicker({
             <div className="flex items-center gap-3">
               {localRange.from && localRange.to && (
                 <span className="text-xs text-[#00C896]">
-                  {/* {diffDays(localRange.from, localRange.to)} days ·{' '} */}
                   {formatDate(localRange.from)} – {formatDate(localRange.to)}
                 </span>
               )}
