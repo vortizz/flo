@@ -1,7 +1,9 @@
-import { Controller, Get, Query, Request } from '@nestjs/common'
+import { Controller, Get, Query } from '@nestjs/common'
 import { GetTransactionsDto } from './dto/get-transactions.dto'
 import { TransactionsService } from './transactions.service'
 import { Timezone } from 'src/common/decorators/timezone.decorator'
+import { User } from 'src/common/decorators/user.decorator'
+import type { ClerkUser } from 'src/common/types'
 
 @Controller('transactions')
 export class TransactionsController {
@@ -10,14 +12,14 @@ export class TransactionsController {
   @Get()
   getTransactions(
     @Query() query: GetTransactionsDto,
-    @Request() req: any,
+    @User() user: ClerkUser,
     @Timezone() tz: string,
   ) {
-    return this.transactionsService.getTransactions(req.user.userId, query, tz)
+    return this.transactionsService.getTransactions(user.userId, query, tz)
   }
 
   @Get('filter-options')
-  getFilterOptions(@Request() req: any) {
-    return this.transactionsService.getFilterOptions(req.user.userId)
+  getFilterOptions(@User() user: ClerkUser) {
+    return this.transactionsService.getFilterOptions(user.userId)
   }
 }
