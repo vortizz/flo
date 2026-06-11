@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
 import { useAuth } from '@clerk/nextjs'
@@ -13,22 +13,38 @@ import { useDebounce } from '@/hooks/useDebounce'
 
 function groupByDate(transactions: Transaction[]) {
   const groups = new Map<string, Transaction[]>()
+  const now = new Date()
+
+  const todayStr = now.toLocaleDateString('en-AU', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  })
+  const yesterdayStr = new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    now.getDate() - 1,
+  ).toLocaleDateString('en-AU', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  })
+
   for (const tx of transactions) {
     const date = new Date(tx.date)
-    const now = new Date()
-    const diff = Math.floor(
-      (now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24),
-    )
+    const dateStr = date.toLocaleDateString('en-AU', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+    })
+
     const key =
-      diff === 0
+      dateStr === todayStr
         ? 'Today'
-        : diff === 1
+        : dateStr === yesterdayStr
           ? 'Yesterday'
-          : date.toLocaleDateString('en-AU', {
-              day: 'numeric',
-              month: 'short',
-              year: 'numeric',
-            })
+          : dateStr
+
     if (!groups.has(key)) groups.set(key, [])
     groups.get(key)!.push(tx)
   }
@@ -68,8 +84,8 @@ export default function TransactionsTable() {
     const to = initParams.get('to')
     return from && to
       ? {
-          from: new Date(from + 'T00:00:00.000Z'),
-          to: new Date(to + 'T00:00:00.000Z'),
+          from: new Date(from + 'T00:00:00'),
+          to: new Date(to + 'T00:00:00'),
         }
       : undefined
   })
@@ -85,10 +101,20 @@ export default function TransactionsTable() {
     if (days !== '30') params.set('days', days)
     if (accountId) params.set('accountId', accountId)
     if (category) params.set('category', category)
-    if (days === 'custom' && customRange?.from)
-      params.set('from', customRange.from.toISOString().split('T')[0])
-    if (days === 'custom' && customRange?.to)
-      params.set('to', customRange.to.toISOString().split('T')[0])
+    if (days === 'custom' && customRange?.from) {
+      const f = customRange.from
+      params.set(
+        'from',
+        `${f.getFullYear()}-${String(f.getMonth() + 1).padStart(2, '0')}-${String(f.getDate()).padStart(2, '0')}`,
+      )
+    }
+    if (days === 'custom' && customRange?.to) {
+      const t = customRange.to
+      params.set(
+        'to',
+        `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`,
+      )
+    }
     router.replace(`${pathname}?${params.toString()}`, { scroll: false })
   }, [
     page,
@@ -102,17 +128,25 @@ export default function TransactionsTable() {
     router,
   ])
 
-  const fromStr =
-    days === 'custom' && customRange?.from
-      ? customRange.from.toISOString().split('T')[0]
-      : new Date(Date.now() - (parseInt(days) || 30) * 24 * 60 * 60 * 1000)
-          .toISOString()
-          .split('T')[0]
+  function toLocalDateStr(date: Date): string {
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+  }
 
-  const toStr =
-    days === 'custom' && customRange?.to
-      ? customRange.to.toISOString().split('T')[0]
-      : new Date().toISOString().split('T')[0]
+  const fromStr = useMemo(() => {
+    if (days === 'custom' && customRange?.from) {
+      return toLocalDateStr(customRange.from)
+    }
+    const d = new Date()
+    d.setDate(d.getDate() - (parseInt(days) || 30))
+    return toLocalDateStr(d)
+  }, [days, customRange])
+
+  const toStr = useMemo(() => {
+    if (days === 'custom' && customRange?.to) {
+      return toLocalDateStr(customRange.to)
+    }
+    return toLocalDateStr(new Date())
+  }, [days, customRange])
 
   const hasActiveFilters = !!(
     type ||

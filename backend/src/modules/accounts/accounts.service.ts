@@ -103,7 +103,7 @@ export class AccountsService {
     if (!user.basiqUserId) throw new Error('No Basiq user found')
 
     const from = account.lastSyncedAt
-      ? account.lastSyncedAt.toISOString().split('T')[0]
+      ? `${account.lastSyncedAt.getFullYear()}-${String(account.lastSyncedAt.getMonth() + 1).padStart(2, '0')}-${String(account.lastSyncedAt.getDate()).padStart(2, '0')}`
       : undefined
 
     const transactions = await this.basiqService.getTransactions(

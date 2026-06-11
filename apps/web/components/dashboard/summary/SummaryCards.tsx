@@ -10,6 +10,7 @@ import { fetchSummary } from '@/lib/api/dashboard'
 import SummaryCardSkeleton from './SummaryCardSkeleton'
 import SummaryCard from './SummaryCard'
 import CashflowRatio from './CashflowRatio'
+import CashflowRatioSkeleton from './CashflowRatioSkeleton'
 
 export default function SummaryCards() {
   const { period, customRange } = useDashboard()
@@ -17,8 +18,13 @@ export default function SummaryCards() {
 
   const apiPeriod = PERIOD_MAP[period] ?? 'week'
 
-  const fromStr = customRange?.from?.toISOString().split('T')[0]
-  const toStr = customRange?.to?.toISOString().split('T')[0]
+  const fromStr = customRange?.from
+    ? `${customRange.from.getFullYear()}-${String(customRange.from.getMonth() + 1).padStart(2, '0')}-${String(customRange.from.getDate()).padStart(2, '0')}`
+    : undefined
+
+  const toStr = customRange?.to
+    ? `${customRange.to.getFullYear()}-${String(customRange.to.getMonth() + 1).padStart(2, '0')}-${String(customRange.to.getDate()).padStart(2, '0')}`
+    : undefined
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ['dashboard-summary', apiPeriod, fromStr, toStr],
@@ -34,6 +40,7 @@ export default function SummaryCards() {
           <SummaryCardSkeleton />
           <SummaryCardSkeleton />
         </div>
+        <CashflowRatioSkeleton />
       </div>
     )
   }

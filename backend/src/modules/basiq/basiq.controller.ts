@@ -2,7 +2,6 @@ import {
   Body,
   Controller,
   Post,
-  Req,
   NotFoundException,
   BadRequestException,
   Get,
@@ -12,6 +11,8 @@ import {
 import { BasiqService } from './basiq.service'
 import { PrismaService } from '../../prisma.service'
 import { SourceType } from '@prisma/client'
+import type { ClerkUser } from 'src/common/types'
+import { User } from 'src/common/decorators/user.decorator'
 
 @Controller('basiq')
 export class BasiqController {
@@ -24,11 +25,11 @@ export class BasiqController {
 
   @Post('auth-link')
   async getAuthLink(
-    @Req() req: any,
+    @User() userL: ClerkUser,
     @Body()
     body: { institutionId?: string; bankIndex?: number; total?: number },
   ) {
-    const clerkId = req.user.userId
+    const clerkId = userL.userId
 
     let user = await this.prisma.user.findUnique({
       where: { clerkId },
@@ -69,8 +70,8 @@ export class BasiqController {
   }
 
   @Post('sync')
-  async syncAccounts(@Req() req: any) {
-    const clerkId = req.user.userId
+  async syncAccounts(@User() userL: ClerkUser) {
+    const clerkId = userL.userId
 
     const user = await this.prisma.user.findUnique({ where: { clerkId } })
     if (!user) throw new NotFoundException('User not found')

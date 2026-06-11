@@ -42,8 +42,13 @@ export default function RecentTransactions() {
   const { period, customRange } = useDashboard()
 
   const apiPeriod = PERIOD_MAP[period] ?? 'week'
-  const fromStr = customRange?.from?.toISOString().split('T')[0]
-  const toStr = customRange?.to?.toISOString().split('T')[0]
+  const fromStr = customRange?.from
+    ? `${customRange.from.getFullYear()}-${String(customRange.from.getMonth() + 1).padStart(2, '0')}-${String(customRange.from.getDate()).padStart(2, '0')}`
+    : undefined
+
+  const toStr = customRange?.to
+    ? `${customRange.to.getFullYear()}-${String(customRange.to.getMonth() + 1).padStart(2, '0')}-${String(customRange.to.getDate()).padStart(2, '0')}`
+    : undefined
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ['dashboard-recent-transactions', apiPeriod, fromStr, toStr],

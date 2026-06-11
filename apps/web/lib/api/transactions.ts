@@ -61,7 +61,12 @@ export async function fetchTransactions(
 
   const res = await fetch(
     `${process.env.NEXT_PUBLIC_API_URL}/api/transactions?${query}`,
-    { headers: { Authorization: `Bearer ${token}` } },
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'x-timezone': Intl.DateTimeFormat().resolvedOptions().timeZone,
+      },
+    },
   )
   if (!res.ok) throw new Error('Failed to fetch transactions')
   return res.json()

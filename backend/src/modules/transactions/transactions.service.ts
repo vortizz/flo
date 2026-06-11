@@ -2,12 +2,17 @@ import { Injectable } from '@nestjs/common'
 import { PrismaService } from '../../prisma.service'
 import { GetTransactionsDto } from './dto/get-transactions.dto'
 import { Institution } from '@prisma/client'
+import { startOfDayUtc, endOfDayUtc } from 'src/common/utils/date.helper'
 
 @Injectable()
 export class TransactionsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async getTransactions(clerkId: string, dto: GetTransactionsDto) {
+  async getTransactions(
+    clerkId: string,
+    dto: GetTransactionsDto,
+    tz: string = 'UTC',
+  ) {
     const user = await this.prisma.user.findUniqueOrThrow({
       where: { clerkId },
     })
@@ -32,8 +37,8 @@ export class TransactionsService {
 
     if (from || to) {
       where.date = {}
-      if (from) where.date.gte = new Date(from + 'T00:00:00.000Z')
-      if (to) where.date.lte = new Date(to + 'T23:59:59.999Z')
+      if (from) where.date.gte = startOfDayUtc(from, tz)
+      if (to) where.date.lte = endOfDayUtc(to, tz)
     }
 
     const [transactions, total] = await Promise.all([

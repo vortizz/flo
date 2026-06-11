@@ -1,6 +1,18 @@
 import { Injectable } from '@nestjs/common'
 import { Period } from './dto/get-summary.dto'
 import { PrismaService } from 'src/prisma.service'
+import {
+  startOfDay,
+  toDateKey,
+  toDateKeyTz,
+  startOfDayTz,
+  startOfDayUtc,
+  endOfDayUtc,
+  nowInTz,
+  getDaysInRange,
+  getDateRanges,
+  getCustomDateRanges,
+} from 'src/common/utils/date.helper'
 
 @Injectable()
 export class DashboardService {
@@ -11,6 +23,7 @@ export class DashboardService {
     period: Period,
     from?: string,
     to?: string,
+    tz: string = 'UTC',
   ) {
     const user = await this.prisma.user.findUniqueOrThrow({
       where: { clerkId },
@@ -18,8 +31,8 @@ export class DashboardService {
 
     const { current, previous } =
       period === 'custom' && from && to
-        ? this.getCustomDateRanges(new Date(from), new Date(to))
-        : this.getDateRanges(period)
+        ? getCustomDateRanges(from, to, tz)
+        : getDateRanges(period, tz)
 
     const [currentTotals, previousTotals] = await Promise.all([
       this.getTotalsForRange(user.id, current.from, current.to),
@@ -53,18 +66,13 @@ export class DashboardService {
       select: { amount: true, type: true },
     })
 
-    const amounts = transactions.map(t => ({
-      amount: Number(t.amount),
-      type: t.type,
-    }))
-
-    const income = amounts
+    const income = transactions
       .filter(t => t.type === 'CREDIT')
-      .reduce((sum, t) => sum + t.amount, 0)
+      .reduce((sum, t) => sum + Number(t.amount), 0)
 
-    const expenses = amounts
+    const expenses = transactions
       .filter(t => t.type === 'DEBIT')
-      .reduce((sum, t) => sum + t.amount, 0)
+      .reduce((sum, t) => sum + Number(t.amount), 0)
 
     return {
       income: Math.round(income * 100) / 100,
@@ -73,73 +81,21 @@ export class DashboardService {
     }
   }
 
-  private getDateRanges(period: Period) {
-    const now = new Date()
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-    const endOfDay = (d: Date) =>
-      new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999)
-    const addDays = (d: Date, n: number) =>
-      new Date(d.getFullYear(), d.getMonth(), d.getDate() + n)
-
-    let from: Date = today
-    let to: Date = today
-    let prevFrom: Date = today
-    let prevTo: Date = today
-
-    switch (period) {
-      case 'week': {
-        const day = now.getDay() === 0 ? 6 : now.getDay() - 1
-        from = addDays(today, -day)
-        to = addDays(from, 6)
-        prevFrom = addDays(from, -7)
-        prevTo = addDays(from, -1)
-        break
-      }
-      case 'fortnight': {
-        const day2 = now.getDay() === 0 ? 6 : now.getDay() - 1
-        from = addDays(today, -day2 - 7)
-        to = addDays(from, 13)
-        prevFrom = addDays(from, -14)
-        prevTo = addDays(from, -1)
-        break
-      }
-      case 'month':
-        from = new Date(now.getFullYear(), now.getMonth(), 1)
-        to = new Date(now.getFullYear(), now.getMonth() + 1, 0)
-        prevFrom = new Date(now.getFullYear(), now.getMonth() - 1, 1)
-        prevTo = new Date(now.getFullYear(), now.getMonth(), 0)
-        break
-      case 'year':
-        from = new Date(now.getFullYear(), 0, 1)
-        to = new Date(now.getFullYear(), 11, 31)
-        prevFrom = new Date(now.getFullYear() - 1, 0, 1)
-        prevTo = new Date(now.getFullYear() - 1, 11, 31)
-        break
-      case 'custom':
-        // custom is handled separately via getCustomDateRanges
-        break
-    }
-
-    return {
-      current: { from, to: endOfDay(to) },
-      previous: { from: prevFrom, to: endOfDay(prevTo) },
-    }
-  }
-
-  private percentChange(previous: number, current: number): number {
-    if (previous === 0) return 0
-    return Math.round(((current - previous) / Math.abs(previous)) * 1000) / 10
-  }
-
-  async getChart(clerkId: string, period: Period, from?: string, to?: string) {
+  async getChart(
+    clerkId: string,
+    period: Period,
+    from?: string,
+    to?: string,
+    tz: string = 'UTC',
+  ) {
     const user = await this.prisma.user.findUniqueOrThrow({
       where: { clerkId },
     })
 
     const { current } =
       period === 'custom' && from && to
-        ? this.getCustomDateRanges(new Date(from), new Date(to))
-        : this.getDateRanges(period)
+        ? getCustomDateRanges(from, to, tz)
+        : getDateRanges(period, tz)
 
     const transactions = await this.prisma.transaction.findMany({
       where: {
@@ -152,14 +108,14 @@ export class DashboardService {
 
     const byDate = new Map<string, { income: number; expenses: number }>()
     for (const t of transactions) {
-      const key = t.date.toISOString().split('T')[0]
+      const key = toDateKeyTz(t.date, tz)
       if (!byDate.has(key)) byDate.set(key, { income: 0, expenses: 0 })
       const entry = byDate.get(key)!
       if (t.type === 'CREDIT') entry.income += Number(t.amount)
       else entry.expenses += Number(t.amount)
     }
 
-    const days = this.getDaysInRange(current.from, current.to)
+    const days = getDaysInRange(current.from, current.to, tz)
     return days.map(day => ({
       date: day,
       income: Math.round((byDate.get(day)?.income ?? 0) * 100) / 100,
@@ -167,14 +123,247 @@ export class DashboardService {
     }))
   }
 
-  private getDaysInRange(from: Date, to: Date): string[] {
-    const days: string[] = []
-    const current = new Date(from)
-    while (current <= to) {
-      days.push(current.toISOString().split('T')[0])
-      current.setDate(current.getDate() + 1)
+  async getChartSummary(
+    clerkId: string,
+    period: Period,
+    from?: string,
+    to?: string,
+    tz: string = 'UTC',
+  ) {
+    const user = await this.prisma.user.findUniqueOrThrow({
+      where: { clerkId },
+    })
+
+    const now = nowInTz(tz)
+    const todayKey = toDateKeyTz(new Date(), tz)
+    let rangeFrom: Date
+    let rangeTo: Date = endOfDayUtc(todayKey, tz)
+    let groupBy: 'week' | 'fortnight' | 'month'
+    let anchorFrom: Date | undefined
+    let customChunkSize: number | undefined
+
+    if (period === 'week') {
+      const dayOfWeek = now.getDay() === 0 ? 6 : now.getDay() - 1
+      const weekStart = new Date(
+        now.getFullYear(),
+        now.getMonth(),
+        now.getDate() - dayOfWeek,
+      )
+      const from = new Date(weekStart)
+      from.setDate(from.getDate() - 20 * 7)
+      rangeFrom = startOfDayUtc(toDateKey(from), tz)
+      rangeTo = endOfDayUtc(todayKey, tz)
+      anchorFrom = startOfDayUtc(toDateKey(weekStart), tz)
+      customChunkSize = 7
+      groupBy = 'week'
+    } else if (period === 'fortnight') {
+      const dayOfWeek = now.getDay() === 0 ? 6 : now.getDay() - 1
+      const weekStart = new Date(
+        now.getFullYear(),
+        now.getMonth(),
+        now.getDate() - dayOfWeek,
+      )
+      const fortnightStart = new Date(weekStart)
+      fortnightStart.setDate(fortnightStart.getDate() - 7)
+      const from = new Date(fortnightStart)
+      from.setDate(from.getDate() - 10 * 14)
+      rangeFrom = startOfDayUtc(toDateKey(from), tz)
+      rangeTo = endOfDayUtc(todayKey, tz)
+      anchorFrom = startOfDayUtc(toDateKey(fortnightStart), tz)
+      customChunkSize = 14
+      groupBy = 'fortnight'
+    } else if (period === 'month') {
+      const from = new Date(now.getFullYear() - 1, now.getMonth(), 1)
+      rangeFrom = startOfDayUtc(toDateKey(from), tz)
+      groupBy = 'month'
+    } else if (period === 'custom' && from && to) {
+      const days =
+        Math.round(
+          (new Date(`${to}T12:00:00Z`).getTime() -
+            new Date(`${from}T12:00:00Z`).getTime()) /
+            (1000 * 60 * 60 * 24),
+        ) + 1
+
+      const fromDate = startOfDay(nowInTz(tz))
+      fromDate.setDate(fromDate.getDate() - days * 4)
+
+      if (days <= 90) {
+        rangeFrom = startOfDayUtc(toDateKey(fromDate), tz)
+        groupBy = 'week'
+      } else {
+        fromDate.setMonth(fromDate.getMonth() - 12)
+        rangeFrom = startOfDayUtc(toDateKey(fromDate), tz)
+        groupBy = 'month'
+      }
+      rangeTo = endOfDayUtc(to, tz)
+      anchorFrom = startOfDayUtc(from, tz)
+      customChunkSize = days
+    } else {
+      const from = new Date(now.getFullYear() - 1, now.getMonth(), 1)
+      rangeFrom = startOfDayUtc(toDateKey(from), tz)
+      groupBy = 'month'
     }
-    return days
+
+    const transactions = await this.prisma.transaction.findMany({
+      where: {
+        account: { userId: user.id },
+        date: { gte: rangeFrom, lte: rangeTo },
+      },
+      select: { amount: true, type: true, date: true },
+      orderBy: { date: 'asc' },
+    })
+
+    return this.groupTransactions(
+      transactions,
+      groupBy,
+      rangeFrom,
+      rangeTo,
+      anchorFrom,
+      customChunkSize,
+      tz,
+    )
+  }
+
+  private groupTransactions(
+    transactions: { amount: any; type: string; date: Date }[],
+    groupBy: 'week' | 'fortnight' | 'month',
+    rangeFrom: Date,
+    rangeTo: Date,
+    anchorFrom?: Date,
+    customChunkSize?: number,
+    tz: string = 'UTC',
+  ) {
+    const map = new Map<
+      string,
+      { label: string; from: Date; income: number; expenses: number }
+    >()
+
+    if (groupBy === 'month') {
+      for (const t of transactions) {
+        const localDate = startOfDayTz(t.date, tz)
+        const key = `${localDate.getFullYear()}-${localDate.getMonth()}`
+        const label = localDate.toLocaleDateString('en-AU', { month: 'short' })
+        if (!map.has(key))
+          map.set(key, { label, from: localDate, income: 0, expenses: 0 })
+        const entry = map.get(key)!
+        if (t.type === 'CREDIT') {
+          entry.income =
+            Math.round((entry.income + Number(t.amount)) * 100) / 100
+        } else {
+          entry.expenses =
+            Math.round((entry.expenses + Number(t.amount)) * 100) / 100
+        }
+      }
+    } else {
+      const rangeSize = groupBy === 'week' ? 7 : 14
+      const chunkSize = customChunkSize ?? rangeSize
+      const chunks: { from: Date; to: Date; key: string; label: string }[] = []
+
+      if (anchorFrom) {
+        const anchorKey = toDateKeyTz(anchorFrom, tz)
+        const toKey = toDateKeyTz(rangeTo, tz)
+        const lastLabel = `${new Date(`${anchorKey}T12:00:00Z`).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}–${new Date(`${toKey}T12:00:00Z`).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}`
+        chunks.push({
+          from: anchorFrom,
+          to: rangeTo,
+          key: anchorKey,
+          label: lastLabel,
+        })
+        map.set(anchorKey, {
+          label: lastLabel,
+          from: anchorFrom,
+          income: 0,
+          expenses: 0,
+        })
+
+        let chunkEndMs = anchorFrom.getTime() - 24 * 60 * 60 * 1000
+
+        while (chunkEndMs >= rangeFrom.getTime()) {
+          const chunkEnd = new Date(chunkEndMs)
+          const chunkStart = new Date(
+            chunkEndMs - (chunkSize - 1) * 24 * 60 * 60 * 1000,
+          )
+          const effectiveStart = chunkStart < rangeFrom ? rangeFrom : chunkStart
+          const startKey = toDateKeyTz(effectiveStart, tz)
+          const endKey = toDateKeyTz(chunkEnd, tz)
+          const label = `${new Date(`${startKey}T12:00:00Z`).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}–${new Date(`${endKey}T12:00:00Z`).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}`
+          chunks.unshift({
+            from: effectiveStart,
+            to: chunkEnd,
+            key: startKey,
+            label,
+          })
+          map.set(startKey, {
+            label,
+            from: effectiveStart,
+            income: 0,
+            expenses: 0,
+          })
+          chunkEndMs = chunkStart.getTime() - 24 * 60 * 60 * 1000
+        }
+      } else {
+        const totalDays = Math.round(
+          (rangeTo.getTime() - rangeFrom.getTime()) / (1000 * 60 * 60 * 24),
+        )
+        const numChunks = Math.ceil(totalDays / rangeSize)
+        const alignedFromMs =
+          rangeTo.getTime() - numChunks * rangeSize * 24 * 60 * 60 * 1000
+
+        let chunkEndMs = rangeTo.getTime()
+        while (chunkEndMs > alignedFromMs) {
+          const chunkEnd = new Date(chunkEndMs)
+          const chunkStart = new Date(
+            chunkEndMs - rangeSize * 24 * 60 * 60 * 1000,
+          )
+          const effectiveStart =
+            chunkStart.getTime() < alignedFromMs
+              ? new Date(alignedFromMs)
+              : chunkStart
+          const startKey = toDateKeyTz(effectiveStart, tz)
+          const endKey = toDateKeyTz(chunkEnd, tz)
+          const label = `${new Date(`${startKey}T12:00:00Z`).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}–${new Date(`${endKey}T12:00:00Z`).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}`
+          chunks.unshift({
+            from: effectiveStart,
+            to: chunkEnd,
+            key: startKey,
+            label,
+          })
+          map.set(startKey, {
+            label,
+            from: effectiveStart,
+            income: 0,
+            expenses: 0,
+          })
+          chunkEndMs = chunkStart.getTime()
+        }
+      }
+
+      for (const t of transactions) {
+        const txKey = toDateKeyTz(t.date, tz)
+        const chunk = chunks.find(c => {
+          const fromKey = toDateKeyTz(c.from, tz)
+          const toKey = toDateKeyTz(c.to, tz)
+          return txKey >= fromKey && txKey <= toKey
+        })
+        if (!chunk) continue
+        const entry = map.get(chunk.key)!
+        if (t.type === 'CREDIT') {
+          entry.income =
+            Math.round((entry.income + Number(t.amount)) * 100) / 100
+        } else {
+          entry.expenses =
+            Math.round((entry.expenses + Number(t.amount)) * 100) / 100
+        }
+      }
+    }
+
+    return [...map.values()]
+      .sort((a, b) => a.from.getTime() - b.from.getTime())
+      .map(({ label, income, expenses }) => ({
+        date: label,
+        income,
+        expenses,
+      }))
   }
 
   async getCategories(
@@ -182,6 +371,7 @@ export class DashboardService {
     period: Period,
     from?: string,
     to?: string,
+    tz: string = 'UTC',
   ) {
     const user = await this.prisma.user.findUniqueOrThrow({
       where: { clerkId },
@@ -189,8 +379,8 @@ export class DashboardService {
 
     const { current } =
       period === 'custom' && from && to
-        ? this.getCustomDateRanges(new Date(from), new Date(to))
-        : this.getDateRanges(period)
+        ? getCustomDateRanges(from, to, tz)
+        : getDateRanges(period, tz)
 
     const transactions = await this.prisma.transaction.findMany({
       where: {
@@ -203,15 +393,20 @@ export class DashboardService {
 
     const byCategory = new Map<string, number>()
     for (const t of transactions) {
-      const key = t.category && t.category !== 'Unknown' ? t.category : null
-      if (!key) continue
+      const key = t.category && t.category !== 'Unknown' ? t.category : 'Other'
       byCategory.set(key, (byCategory.get(key) ?? 0) + Number(t.amount))
     }
 
-    const sorted = [...byCategory.entries()].sort((a, b) => b[1] - a[1])
-    const top5 = sorted.slice(0, 5)
-    const rest = sorted.slice(5)
-    const otherAmount = rest.reduce((sum, [, amount]) => sum + amount, 0)
+    const named = [...byCategory.entries()]
+      .filter(([k]) => k !== 'Other')
+      .sort((a, b) => b[1] - a[1])
+
+    const otherFromUncategorised = byCategory.get('Other') ?? 0
+    const top5 = named.slice(0, 5)
+    const rest = named.slice(5)
+    const otherAmount =
+      rest.reduce((sum, [, amount]) => sum + amount, 0) + otherFromUncategorised
+
     if (otherAmount > 0) top5.push(['Other', otherAmount])
     const total = top5.reduce((sum, [, amount]) => sum + amount, 0)
 
@@ -227,6 +422,7 @@ export class DashboardService {
     period: Period,
     from?: string,
     to?: string,
+    tz: string = 'UTC',
   ) {
     const user = await this.prisma.user.findUniqueOrThrow({
       where: { clerkId },
@@ -234,8 +430,8 @@ export class DashboardService {
 
     const { current } =
       period === 'custom' && from && to
-        ? this.getCustomDateRanges(new Date(from), new Date(to))
-        : this.getDateRanges(period)
+        ? getCustomDateRanges(from, to, tz)
+        : getDateRanges(period, tz)
 
     const transactions = await this.prisma.transaction.findMany({
       where: {
@@ -271,52 +467,21 @@ export class DashboardService {
     }))
   }
 
-  private getCustomDateRanges(from: Date, to: Date) {
-    const endOfDay = (d: Date) =>
-      new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999)
-
-    const rangeDays = Math.round(
-      (to.getTime() - from.getTime()) / (1000 * 60 * 60 * 24),
-    )
-
-    const prevTo = new Date(from)
-    prevTo.setDate(from.getDate() - 1)
-    const prevFrom = new Date(prevTo)
-    prevFrom.setDate(prevTo.getDate() - rangeDays)
-
-    return {
-      current: { from, to: endOfDay(to) },
-      previous: { from: prevFrom, to: endOfDay(prevTo) },
-    }
-  }
-
-  async getDashboardAccounts(clerkId: string) {
+  async getDashboardAccounts(clerkId: string, tz: string = 'UTC') {
     const user = await this.prisma.user.findUniqueOrThrow({
       where: { clerkId },
     })
 
-    const today = new Date()
-    const startOfDay = new Date(
-      today.getFullYear(),
-      today.getMonth(),
-      today.getDate(),
-    )
-    const endOfDay = new Date(
-      today.getFullYear(),
-      today.getMonth(),
-      today.getDate(),
-      23,
-      59,
-      59,
-      999,
-    )
+    const todayKey = toDateKeyTz(new Date(), tz)
+    const todayStart = startOfDayUtc(todayKey, tz)
+    const todayEnd = endOfDayUtc(todayKey, tz)
 
     const accounts = await this.prisma.account.findMany({
       where: { userId: user.id },
       include: {
         institution: { select: { name: true, logoUrl: true } },
         transactions: {
-          where: { date: { gte: startOfDay, lte: endOfDay } },
+          where: { date: { gte: todayStart, lte: todayEnd } },
           select: { amount: true, type: true },
         },
       },
@@ -348,5 +513,10 @@ export class DashboardService {
         }
       }),
     }
+  }
+
+  private percentChange(previous: number, current: number): number {
+    if (previous === 0) return 0
+    return Math.round(((current - previous) / Math.abs(previous)) * 1000) / 10
   }
 }
