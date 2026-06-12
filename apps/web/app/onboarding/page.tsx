@@ -29,6 +29,11 @@ function OnboardingContent() {
   const [banks, setBanks] = useState<Institution[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isCheckingStatus, setIsCheckingStatus] = useState(true)
+  const [hasMobile, setHasMobile] = useState(false)
+
+  const [source] = useState<string | undefined>(
+    () => searchParams.get('source') ?? undefined,
+  )
 
   const [currentStep, setCurrentStep] = useState<1 | 2 | 3 | 4 | 5>(() => {
     const step = searchParams.get('step')
@@ -109,7 +114,9 @@ function OnboardingContent() {
 
         const user = await response.json()
 
-        if (user?.onboardingCompleted) {
+        if (user?.mobile) setHasMobile(true)
+
+        if (user?.onboardingCompleted && source !== 'accounts') {
           router.replace('/dashboard')
           return
         }
@@ -119,7 +126,7 @@ function OnboardingContent() {
       setIsCheckingStatus(false)
     }
     checkOnboardingStatus()
-  }, [isLoaded, getToken, router])
+  }, [isLoaded, getToken, router, source])
 
   const toggleBank = (id: string) => {
     setSelectedBanks(prev =>
@@ -156,20 +163,31 @@ function OnboardingContent() {
           <FloLogo size={36} />
           <span className="text-white font-semibold text-xl">Flo</span>
         </div>
-        <button
-          onClick={handleSkip}
-          className="flex items-center gap-1.5 text-[#8b949e] hover:text-white text-sm transition-colors"
-        >
-          Skip for now <ArrowRight size={14} />
-        </button>
+        {source === 'accounts' ? (
+          <button
+            onClick={() => router.push('/accounts')}
+            className="flex items-center gap-1.5 text-[#8b949e] hover:text-white text-sm transition-colors"
+          >
+            Back to Accounts <ArrowRight size={14} />
+          </button>
+        ) : (
+          <button
+            onClick={handleSkip}
+            className="flex items-center gap-1.5 text-[#8b949e] hover:text-white text-sm transition-colors"
+          >
+            Skip for now <ArrowRight size={14} />
+          </button>
+        )}
       </div>
 
       {/* PROGRESS STEPS */}
-      <div className="flex items-center justify-center py-4 shrink-0">
+      <div className="flex items-center justify-center py-2.5 shrink-0">
         <div className="flex items-center gap-0">
           {STEPS.map((step, idx) => {
-            const isCompleted = step.number < currentStep
-            const isActive = step.number === currentStep
+            const isCompleted =
+              step.number < currentStep ||
+              (hasMobile && step.number === 3 && currentStep >= 4)
+            const isActive = step.number === currentStep && !isCompleted
             return (
               <div key={step.number} className="flex items-center">
                 <div className="flex flex-col items-center gap-1">
@@ -277,7 +295,7 @@ function OnboardingContent() {
           <StepConsent
             banks={banks}
             selectedBanks={selectedBanks}
-            onContinue={() => setCurrentStep(3)}
+            onContinue={() => setCurrentStep(hasMobile ? 4 : 3)}
             onBack={() => setCurrentStep(1)}
           />
         )}
@@ -292,11 +310,13 @@ function OnboardingContent() {
             banks={banks}
             selectedBanks={selectedBanks}
             initialBankIndex={initialBankIndex}
-            onBack={() => setCurrentStep(3)}
+            source={source}
+            onBack={() => setCurrentStep(hasMobile ? 2 : 3)}
           />
         )}
         {currentStep === 5 && (
           <StepSync
+            source={source}
             onBack={() => {
               sessionStorage.removeItem('basiqJobIds')
               setCurrentStep(4)
@@ -306,22 +326,24 @@ function OnboardingContent() {
       </div>
 
       {/* FOOTER */}
-      <div className="flex flex-col items-center justify-center py-6 shrink-0 text-center px-4 mt-auto">
-        <button
-          onClick={handleSkip}
-          className="text-xs text-[#8b949e] hover:text-white transition-colors mb-1 inline-flex items-center gap-2 group"
-        >
-          Skip for now
-          <Info
-            size={14}
-            className="group-hover:text-[#00C896] transition-colors"
-          />
-        </button>
-        <p className="text-[10px] text-[#4a6070] max-w-xs leading-relaxed">
-          Skipping will limit your dashboard to manual entries only. You can
-          connect a bank later in Settings.
-        </p>
-      </div>
+      {source !== 'accounts' && (
+        <div className="flex flex-col items-center justify-center py-6 shrink-0 text-center px-4 mt-auto">
+          <button
+            onClick={handleSkip}
+            className="text-xs text-[#8b949e] hover:text-white transition-colors mb-1 inline-flex items-center gap-2 group"
+          >
+            Skip for now
+            <Info
+              size={14}
+              className="group-hover:text-[#00C896] transition-colors"
+            />
+          </button>
+          <p className="text-[10px] text-[#4a6070] max-w-xs leading-relaxed">
+            Skipping will limit your dashboard to manual entries only. You can
+            connect a bank later in Settings.
+          </p>
+        </div>
+      )}
     </div>
   )
 }

@@ -9,6 +9,7 @@ interface StepConnectProps {
   banks: Institution[]
   selectedBanks: string[]
   initialBankIndex: number
+  source?: string
   onBack: () => void
 }
 
@@ -16,6 +17,7 @@ export function StepConnect({
   banks,
   selectedBanks,
   initialBankIndex,
+  source,
   onBack,
 }: StepConnectProps) {
   const { getToken } = useAuth()
@@ -43,6 +45,7 @@ export function StepConnect({
               institutionId: selectedBanks[currentBankIndex],
               bankIndex: currentBankIndex,
               total: selectedBanks.length,
+              ...(source ? { source } : {}),
             }),
           },
         )
@@ -59,7 +62,7 @@ export function StepConnect({
     }
 
     redirect()
-  }, [currentBankIndex, getToken, selectedBanks])
+  }, [currentBankIndex, getToken, selectedBanks, source])
 
   const currentBank = banks.find(b => b.id === selectedBanks[currentBankIndex])
 

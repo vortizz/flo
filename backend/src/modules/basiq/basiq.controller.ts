@@ -7,12 +7,17 @@ import {
   Get,
   Param,
   Logger,
+  Headers,
+  Req,
+  HttpCode,
 } from '@nestjs/common'
+import type { FastifyRequest } from 'fastify'
 import { BasiqService } from './basiq.service'
 import { PrismaService } from '../../prisma.service'
 import { SourceType } from '@prisma/client'
 import type { ClerkUser } from 'src/common/types'
 import { User } from 'src/common/decorators/user.decorator'
+import { Public } from '../auth/auth.decorator'
 
 @Controller('basiq')
 export class BasiqController {
@@ -23,11 +28,48 @@ export class BasiqController {
     private prisma: PrismaService,
   ) {}
 
+  @Public()
+  @Post('webhook')
+  @HttpCode(200)
+  async handleWebhook(
+    @Req() req: FastifyRequest,
+    @Headers('x-basiq-signature') signature: string,
+    @Body() body: any,
+  ) {
+    const rawBody = (req as any).rawBody
+    if (!rawBody) {
+      this.logger.warn('Webhook received without raw body')
+      return { received: true }
+    }
+
+    const isValid = this.basiqService.verifyWebhookSignature(rawBody, signature)
+
+    if (!isValid) {
+      this.logger.warn('Invalid Basiq webhook signature')
+      return { received: true }
+    }
+
+    const eventType = body?.type
+
+    this.logger.log(`Basiq webhook received: ${eventType}`)
+
+    if (eventType === 'consent.revoked' || eventType === 'consent.expired') {
+      await this.basiqService.handleConsentRevoked(body)
+    }
+
+    return { received: true }
+  }
+
   @Post('auth-link')
   async getAuthLink(
     @User() userL: ClerkUser,
     @Body()
-    body: { institutionId?: string; bankIndex?: number; total?: number },
+    body: {
+      institutionId?: string
+      bankIndex?: number
+      total?: number
+      source?: string
+    },
   ) {
     const clerkId = userL.userId
 
@@ -59,6 +101,7 @@ export class BasiqController {
       body.institutionId,
       body.bankIndex,
       body.total,
+      body.source,
     )
 
     return { url: authLinkUrl }
@@ -77,7 +120,6 @@ export class BasiqController {
     if (!user) throw new NotFoundException('User not found')
     if (!user.basiqUserId) throw new BadRequestException('No Basiq user found')
 
-    // Retry accounts
     let accounts: any[] = []
     for (let attempt = 1; attempt <= 5; attempt++) {
       accounts = await this.basiqService.syncAccounts(user.basiqUserId)
@@ -88,7 +130,6 @@ export class BasiqController {
       }
     }
 
-    // Upsert accounts
     const savedAccounts: { id: string; basiqId: string }[] = []
     for (const account of accounts) {
       const institution = await this.prisma.institution.findUnique({
@@ -106,6 +147,7 @@ export class BasiqController {
           last4,
           institutionId: institution?.id ?? null,
           lastSyncedAt: new Date(),
+          status: 'CONNECTED',
         },
         create: {
           userId: user.id,
@@ -117,19 +159,18 @@ export class BasiqController {
           basiqConnectionId: account.connection ?? null,
           last4,
           lastSyncedAt: new Date(),
+          status: 'CONNECTED',
         },
       })
       savedAccounts.push({ id: saved.id, basiqId: account.id })
     }
 
-    // Fetch and sync transactions
     const transactions = await this.basiqService.getTransactions(
       user.basiqUserId,
     )
 
     let synced = 0
     for (const tx of transactions) {
-      // Find matching Flo account
       const floAccount = savedAccounts.find(a => a.basiqId === tx.account)
       if (!floAccount) continue
 
@@ -162,10 +203,12 @@ export class BasiqController {
       synced++
     }
 
-    await this.prisma.user.update({
-      where: { clerkId },
-      data: { onboardingCompleted: true },
-    })
+    if (!user.onboardingCompleted) {
+      await this.prisma.user.update({
+        where: { clerkId },
+        data: { onboardingCompleted: true },
+      })
+    }
 
     return { accounts: accounts.length, transactions: synced }
   }

@@ -3,7 +3,7 @@
 import { useAuth } from '@clerk/nextjs'
 import PeriodSelector from './PeriodSelector'
 import { Search, Bell, Menu, RefreshCw, Plus } from 'lucide-react'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { syncAllAccounts } from '@/lib/api/accounts'
@@ -20,6 +20,7 @@ export default function TopBar({ onMenuToggle }: { onMenuToggle: () => void }) {
   const pathname = usePathname()
   const showPeriodSelector = pathname === '/dashboard'
   const isAccounts = pathname.startsWith('/accounts')
+  const router = useRouter()
 
   const { getToken } = useAuth()
   const queryClient = useQueryClient()
@@ -103,7 +104,10 @@ export default function TopBar({ onMenuToggle }: { onMenuToggle: () => void }) {
               />
             </div>
           ) : (
-            <button className="flex items-center gap-2 bg-[#14b8a6] text-[#020617] font-semibold px-2 sm:px-4 py-2 rounded-lg text-sm hover:bg-[#0d9488] transition-colors">
+            <button
+              onClick={() => router.push('/onboarding?source=accounts')}
+              className="flex items-center gap-2 bg-[#14b8a6] text-[#020617] font-semibold px-2 sm:px-4 py-2 rounded-lg text-sm hover:bg-[#0d9488] transition-colors"
+            >
               <Plus width={14} height={14} />
               <span className="hidden sm:block">Add Bank Account</span>
             </button>

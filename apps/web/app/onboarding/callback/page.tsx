@@ -19,29 +19,39 @@ function CallbackHandler() {
 
     let bankIndex = 0
     let total = 1
+    let source: string | undefined
+
+    const isNull = (val: string | null) => !val || val === 'null'
 
     if (rawState) {
       try {
         const parsed = JSON.parse(decodeURIComponent(rawState))
         bankIndex = parsed.bankIndex ?? 0
         total = parsed.total ?? 1
+        source = parsed.source
       } catch {
         // ignore parse errors
       }
     }
 
-    const existing = JSON.parse(sessionStorage.getItem('basiqJobIds') ?? '[]')
-    if (jobId || jobIds) {
-      existing.push({ jobId, jobIds, bankIndex })
-      sessionStorage.setItem('basiqJobIds', JSON.stringify(existing))
+    if (isNull(jobId) && isNull(jobIds)) {
+      router.replace(`/onboarding?${source ? `source=${source}` : ''}`)
+      return
     }
+
+    const existing = JSON.parse(sessionStorage.getItem('basiqJobIds') ?? '[]')
+    const filtered = existing.filter((e: any) => e.bankIndex !== bankIndex)
+    filtered.push({ jobId, jobIds, bankIndex })
+    sessionStorage.setItem('basiqJobIds', JSON.stringify(filtered))
 
     const nextIndex = bankIndex + 1
 
     if (nextIndex < total) {
-      router.replace(`/onboarding?step=4&bankIndex=${nextIndex}&total=${total}`)
+      router.replace(
+        `/onboarding?step=4&bankIndex=${nextIndex}&total=${total}${source ? `&source=${source}` : ''}`,
+      )
     } else {
-      router.replace('/onboarding?step=5')
+      router.replace(`/onboarding?step=5${source ? `&source=${source}` : ''}`)
     }
   }, [router, searchParams])
 

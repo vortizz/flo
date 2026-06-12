@@ -1,16 +1,21 @@
-import { Injectable, Logger } from '@nestjs/common'
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { SourceType, TransactionType } from '@prisma/client'
 import axios, { AxiosInstance } from 'axios'
+import { createHmac, timingSafeEqual } from 'crypto'
+import { PrismaService } from 'src/prisma.service'
 
 @Injectable()
-export class BasiqService {
+export class BasiqService implements OnModuleInit {
   private readonly logger = new Logger(BasiqService.name)
   private axiosInstance: AxiosInstance
   private accessToken: string | null = null
   private tokenExpiry: Date | null = null
 
-  constructor(private configService: ConfigService) {
+  constructor(
+    private configService: ConfigService,
+    private prismaService: PrismaService,
+  ) {
     const baseUrl = this.configService.get<string>('app.basiqBaseUrl')
 
     this.axiosInstance = axios.create({
@@ -22,9 +27,49 @@ export class BasiqService {
     })
   }
 
-  // Get or refresh access token
+  async onModuleInit() {
+    await this.registerWebhook()
+  }
+
+  private async registerWebhook(): Promise<void> {
+    const webhookUrl = this.configService.get<string>('app.basiqWebhookUrl')
+    if (!webhookUrl) {
+      this.logger.warn('WEBHOOK_URL not set — skipping webhook registration')
+      return
+    }
+
+    try {
+      const token = await this.getAccessToken()
+
+      const existing = await this.axiosInstance.get('/notifications/webhooks', {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+
+      const alreadyRegistered = existing.data?.data?.some(
+        (w: any) => w.url === webhookUrl,
+      )
+
+      if (alreadyRegistered) {
+        this.logger.log('Basiq webhook already registered — skipping')
+        return
+      }
+
+      const response = await this.axiosInstance.post(
+        '/notifications/webhooks',
+        {
+          url: webhookUrl,
+          subscribedEvents: ['consent.revoked', 'consent.expired'],
+        },
+        { headers: { Authorization: `Bearer ${token}` } },
+      )
+
+      this.logger.log(`Basiq webhook registered: ${response.data.id}`)
+    } catch (error) {
+      this.logger.error(`Failed to register Basiq webhook: ${error}`)
+    }
+  }
+
   private async getAccessToken(): Promise<string> {
-    // Return cached token if still valid
     if (this.accessToken && this.tokenExpiry && new Date() < this.tokenExpiry) {
       return this.accessToken as string
     }
@@ -63,7 +108,6 @@ export class BasiqService {
     }
   }
 
-  // Create a Basiq user for a Flo user
   async createUser(
     email: string,
     mobile: string,
@@ -99,6 +143,7 @@ export class BasiqService {
     institutionId?: string,
     bankIndex?: number,
     total?: number,
+    source?: string,
   ): Promise<string> {
     const token = await this.getAccessToken()
 
@@ -115,7 +160,11 @@ export class BasiqService {
       if (institutionId) params.append('institutionId', institutionId)
       params.append(
         'state',
-        JSON.stringify({ bankIndex: bankIndex ?? 0, total: total ?? 1 }),
+        JSON.stringify({
+          bankIndex: bankIndex ?? 0,
+          total: total ?? 1,
+          ...(source ? { source } : {}),
+        }),
       )
 
       this.logger.log(`Auth link created for user: ${basiqUserId}`)
@@ -148,10 +197,8 @@ export class BasiqService {
         const data = response.data.data ?? []
         allTransactions.push(...data)
 
-        // Follow pagination
         const next = response.data.links?.next
         if (next) {
-          // Extract relative path from full URL
           url = next.replace('https://au-api.basiq.io', '')
         } else {
           url = null
@@ -190,7 +237,6 @@ export class BasiqService {
         `/users/${basiqUserId}/accounts`,
         { headers: { Authorization: `Bearer ${token}` } },
       )
-      this.logger.log(`Accounts response: ${JSON.stringify(response.data)}`)
       return response.data.data
     } catch (error) {
       this.logger.error(`Failed to sync accounts: ${error}`)
@@ -246,5 +292,58 @@ export class BasiqService {
       this.logger.error(`Failed to revoke Basiq connection: ${error}`)
       throw error
     }
+  }
+
+  verifyWebhookSignature(rawBody: Buffer, signature: string): boolean {
+    const webhookSecret = this.configService.get<string>(
+      'app.basiqWebhookSecret',
+    )
+    if (!webhookSecret) {
+      this.logger.warn(
+        'BASIQ_WEBHOOK_SECRET not set — skipping signature verification',
+      )
+      return true
+    }
+    if (!signature) return false
+
+    try {
+      const signingKey = webhookSecret.startsWith('whsec_')
+        ? webhookSecret.slice('whsec_'.length)
+        : webhookSecret
+
+      const keyBuffer = Buffer.from(signingKey, 'base64')
+      const expected = createHmac('sha256', keyBuffer)
+        .update(rawBody)
+        .digest('hex')
+      return timingSafeEqual(Buffer.from(signature), Buffer.from(expected))
+    } catch {
+      return false
+    }
+  }
+
+  async handleConsentRevoked(payload: any): Promise<void> {
+    const basiqUserId = payload?.data?.userId ?? payload?.userId
+    if (!basiqUserId) {
+      this.logger.warn('consent.revoked webhook missing userId')
+      return
+    }
+
+    const user = await this.prismaService.user.findFirst({
+      where: { basiqUserId },
+    })
+
+    if (!user) {
+      this.logger.warn(`No Flo user found for basiqUserId: ${basiqUserId}`)
+      return
+    }
+
+    const updated = await this.prismaService.account.updateMany({
+      where: { userId: user.id },
+      data: { status: 'DISCONNECTED' },
+    })
+
+    this.logger.log(
+      `consent.revoked: marked ${updated.count} accounts as DISCONNECTED for user ${user.id}`,
+    )
   }
 }

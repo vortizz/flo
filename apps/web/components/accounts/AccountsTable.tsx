@@ -7,6 +7,7 @@ import AccountRow from './AccountRow'
 import AccountsTableSkeleton from './AccountsTableSkeleton'
 import { useState } from 'react'
 import { Plus } from 'lucide-react'
+import { useRouter } from 'next/navigation'
 import AccountsSummaryCards from './AccountsSummaryCards'
 import AccountsSummaryCardsSkeleton from './AccountsSummaryCardsSkeleton'
 
@@ -14,6 +15,7 @@ type Tab = 'all' | 'connected' | 'disconnected' | 'manual'
 
 export default function AccountsTable() {
   const { getToken } = useAuth()
+  const router = useRouter()
   const [tab, setTab] = useState<Tab>('all')
 
   const { data, isLoading, isError } = useQuery({
@@ -114,7 +116,10 @@ export default function AccountsTable() {
         ))}
 
         {/* Connect new account row */}
-        <div className="px-6 py-4 flex items-center gap-3 hover:bg-[#ffffff04] transition-colors cursor-pointer">
+        <div
+          onClick={() => router.push('/onboarding?source=accounts')}
+          className="px-6 py-4 flex items-center gap-3 hover:bg-[#ffffff04] transition-colors cursor-pointer"
+        >
           <div className="w-9 h-9 rounded-full border-2 border-dashed border-[#1a2d3d] flex items-center justify-center text-[#8b949e]">
             <Plus width={16} height={16} />
           </div>

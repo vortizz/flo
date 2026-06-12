@@ -11,13 +11,14 @@ interface JobStep {
 }
 
 interface StepSyncProps {
+  source?: string
   onBack: () => void
 }
 
 const POLL_INTERVAL = 3000
 const MAX_POLLS = 20
 
-export function StepSync({ onBack }: StepSyncProps) {
+export function StepSync({ source, onBack }: StepSyncProps) {
   const { getToken } = useAuth()
   const router = useRouter()
 
@@ -65,7 +66,21 @@ export function StepSync({ onBack }: StepSyncProps) {
           ),
         )
 
-        const allSteps = results.flatMap((job: any) => job.steps ?? [])
+        // Group jobs by connection URL, keep only the most recent per connection
+        const jobsByConnection = new Map<string, any>()
+        for (const job of results) {
+          const connectionUrl = job.links?.source
+          if (!connectionUrl) continue
+          const existing = jobsByConnection.get(connectionUrl)
+          if (!existing || new Date(job.updated) > new Date(existing.updated)) {
+            jobsByConnection.set(connectionUrl, job)
+          }
+        }
+
+        // Only use steps from the most recent job per connection
+        const allSteps = Array.from(jobsByConnection.values()).flatMap(
+          (job: any) => job.steps ?? [],
+        )
 
         const verifyStep = allSteps.find((s: any) =>
           s.title?.toLowerCase().includes('verify'),
@@ -101,7 +116,6 @@ export function StepSync({ onBack }: StepSyncProps) {
           return
         }
 
-        // Check if all Basiq steps (verify, accounts, transactions) are done
         const basiqStepsDone =
           allSteps.length > 0 &&
           allSteps.every(
@@ -130,7 +144,11 @@ export function StepSync({ onBack }: StepSyncProps) {
 
           sessionStorage.removeItem('basiqJobIds')
           setIsDone(true)
-          setTimeout(() => router.push('/dashboard'), 2000)
+          setTimeout(
+            () =>
+              router.push(source === 'accounts' ? '/accounts' : '/dashboard'),
+            2000,
+          )
           return
         }
 
@@ -150,7 +168,7 @@ export function StepSync({ onBack }: StepSyncProps) {
     }
 
     poll()
-  }, [getToken, router])
+  }, [getToken, router, source])
 
   if (error) {
     return (
@@ -175,7 +193,9 @@ export function StepSync({ onBack }: StepSyncProps) {
         </div>
         <p className="text-white font-semibold text-lg">All connected!</p>
         <p className="text-[#8b949e] text-xs text-center">
-          Your accounts have been synced. Taking you to your dashboard...
+          {source === 'accounts'
+            ? 'Your account has been connected. Taking you back to accounts...'
+            : 'Your accounts have been synced. Taking you to your dashboard...'}
         </p>
       </div>
     )

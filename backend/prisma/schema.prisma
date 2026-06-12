@@ -28,6 +28,7 @@ model Account {
   accountName       String
   basiqId           String?       @unique
   balance           Decimal       @default(0) @db.Decimal(12, 2)
+  status            AccountStatus @default(CONNECTED)
   lastSyncedAt      DateTime?
   transactions      Transaction[]
   last4             String?
@@ -77,4 +78,9 @@ enum TransactionType {
 enum SourceType {
   BASIQ
   MANUAL
+}
+
+enum AccountStatus {
+  CONNECTED
+  DISCONNECTED
 }

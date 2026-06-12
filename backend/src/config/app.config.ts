@@ -8,4 +8,6 @@ export default registerAs('app', () => ({
   clerkWebhookSecret: process.env.CLERK_WEBHOOK_SECRET,
   basiqApiKey: process.env.BASIQ_API_KEY,
   basiqBaseUrl: process.env.BASIQ_BASE_URL || 'https://au-api.basiq.io',
+  basiqWebhookSecret: process.env.BASIQ_WEBHOOK_SECRET,
+  basiqWebhookUrl: process.env.BASIQ_WEBHOOK_URL,
 }))
