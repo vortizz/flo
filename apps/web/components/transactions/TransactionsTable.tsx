@@ -1,15 +1,17 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
-import { useQuery } from '@tanstack/react-query'
+import { useInfiniteQuery } from '@tanstack/react-query'
 import { useAuth } from '@clerk/nextjs'
 import { fetchTransactions, type Transaction } from '@/lib/api/transactions'
 import TransactionsTableSkeleton from './TransactionsTableSkeleton'
 import TransactionRow from './TransactionRow'
-import TransactionsPagination from './TransactionsPagination'
 import TransactionsFilters from './TransactionsFilters'
 import { useDebounce } from '@/hooks/useDebounce'
+import { Loader2 } from 'lucide-react'
+
+const LIMIT = 20
 
 function groupByDate(transactions: Transaction[]) {
   const groups = new Map<string, Transaction[]>()
@@ -55,6 +57,7 @@ export default function TransactionsTable() {
   const { getToken } = useAuth()
   const router = useRouter()
   const pathname = usePathname()
+  const sentinelRef = useRef<HTMLDivElement>(null)
 
   const getInitialParams = () => {
     if (typeof window === 'undefined') return new URLSearchParams()
@@ -63,14 +66,11 @@ export default function TransactionsTable() {
 
   const initParams = getInitialParams()
 
-  // Local state — source of truth
-  const [page, setPage] = useState(parseInt(initParams.get('page') ?? '1'))
   const [search, setSearch] = useState(initParams.get('search') ?? '')
   const [type, setType] = useState<'DEBIT' | 'CREDIT' | undefined>(
     (initParams.get('type') as 'DEBIT' | 'CREDIT') || undefined,
   )
   const [days, setDays] = useState(initParams.get('days') ?? '30')
-
   const [accountId, setAccountId] = useState<string | undefined>(
     initParams.get('accountId') || undefined,
   )
@@ -92,10 +92,9 @@ export default function TransactionsTable() {
 
   const debouncedSearch = useDebounce(search, 500)
 
-  // Sync to URL as side effect
+  // Sync filters to URL
   useEffect(() => {
     const params = new URLSearchParams()
-    if (page > 1) params.set('page', String(page))
     if (search) params.set('search', search)
     if (type) params.set('type', type)
     if (days !== '30') params.set('days', days)
@@ -116,17 +115,7 @@ export default function TransactionsTable() {
       )
     }
     router.replace(`${pathname}?${params.toString()}`, { scroll: false })
-  }, [
-    page,
-    search,
-    type,
-    days,
-    customRange,
-    accountId,
-    category,
-    pathname,
-    router,
-  ])
+  }, [search, type, days, customRange, accountId, category, pathname, router])
 
   function toLocalDateStr(date: Date): string {
     return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
@@ -156,55 +145,16 @@ export default function TransactionsTable() {
     search
   )
 
-  const filters = {
-    type,
-    onTypeChange: (v: 'DEBIT' | 'CREDIT' | undefined) => {
-      setType(v)
-      setPage(1)
-    },
-    days,
-    onDaysChange: (v: string) => {
-      setDays(v)
-      setPage(1)
-    },
-    customRange,
-    onCustomRangeChange: (
-      v: { from: Date | undefined; to?: Date | undefined } | undefined,
-    ) => {
-      setCustomRange(v)
-      setPage(1)
-    },
-    accountId,
-    onAccountChange: (v: string | undefined) => {
-      setAccountId(v)
-      setPage(1)
-    },
-    category,
-    onCategoryChange: (v: string | undefined) => {
-      setCategory(v)
-      setPage(1)
-    },
-    search,
-    onSearchChange: (v: string) => {
-      setSearch(v)
-      setPage(1)
-    },
-    hasActiveFilters,
-    onClearAll: () => {
-      setPage(1)
-      setSearch('')
-      setType(undefined)
-      setDays('30')
-      setCustomRange(undefined)
-      setAccountId(undefined)
-      setCategory(undefined)
-    },
-  }
-
-  const { data, isLoading, isFetching, isError } = useQuery({
+  const {
+    data,
+    isLoading,
+    isFetchingNextPage,
+    fetchNextPage,
+    hasNextPage,
+    isError,
+  } = useInfiniteQuery({
     queryKey: [
       'transactions',
-      page,
       type,
       days,
       fromStr,
@@ -213,11 +163,11 @@ export default function TransactionsTable() {
       category,
       debouncedSearch,
     ],
-    queryFn: () =>
+    queryFn: ({ pageParam = 1 }) =>
       fetchTransactions(
         {
-          page,
-          limit: 10,
+          page: pageParam as number,
+          limit: LIMIT,
           type,
           accountId,
           category,
@@ -227,9 +177,69 @@ export default function TransactionsTable() {
         },
         getToken,
       ),
+    initialPageParam: 1,
+    getNextPageParam: last => {
+      if (last.pagination.page < last.pagination.totalPages) {
+        return last.pagination.page + 1
+      }
+      return undefined
+    },
     staleTime: 0,
-    placeholderData: prev => prev,
   })
+
+  // IntersectionObserver sentinel
+  const handleObserver = useCallback(
+    (entries: IntersectionObserverEntry[]) => {
+      const target = entries[0]
+      if (target.isIntersecting && hasNextPage && !isFetchingNextPage) {
+        fetchNextPage()
+      }
+    },
+    [fetchNextPage, hasNextPage, isFetchingNextPage],
+  )
+
+  useEffect(() => {
+    const sentinel = sentinelRef.current
+    if (!sentinel) return
+    const observer = new IntersectionObserver(handleObserver, {
+      threshold: 0.1,
+    })
+    observer.observe(sentinel)
+    return () => observer.disconnect()
+  }, [handleObserver])
+
+  const allTransactions = useMemo(
+    () => data?.pages.flatMap(p => p.data) ?? [],
+    [data],
+  )
+
+  const total = data?.pages[0]?.pagination.total ?? 0
+
+  const filters = {
+    type,
+    onTypeChange: (v: 'DEBIT' | 'CREDIT' | undefined) => setType(v),
+    days,
+    onDaysChange: (v: string) => setDays(v),
+    customRange,
+    onCustomRangeChange: (
+      v: { from: Date | undefined; to?: Date | undefined } | undefined,
+    ) => setCustomRange(v),
+    accountId,
+    onAccountChange: (v: string | undefined) => setAccountId(v),
+    category,
+    onCategoryChange: (v: string | undefined) => setCategory(v),
+    search,
+    onSearchChange: (v: string) => setSearch(v),
+    hasActiveFilters,
+    onClearAll: () => {
+      setSearch('')
+      setType(undefined)
+      setDays('30')
+      setCustomRange(undefined)
+      setAccountId(undefined)
+      setCategory(undefined)
+    },
+  }
 
   if (isLoading && !data) {
     return (
@@ -253,7 +263,7 @@ export default function TransactionsTable() {
     )
   }
 
-  const grouped = groupByDate(data.data)
+  const grouped = groupByDate(allTransactions)
 
   return (
     <div className="flex flex-col gap-6">
@@ -263,8 +273,6 @@ export default function TransactionsTable() {
         className={[
           'bg-[linear-gradient(145deg,rgba(30,41,59,0.7)_0%,rgba(15,23,42,0.4)_100%)] backdrop-blur-md',
           'shadow-[0_4px_24px_-1px_rgba(0,0,0,0.2)] border border-[#ffffff0d] rounded-xl overflow-hidden',
-          'transition-opacity duration-200',
-          isFetching ? 'opacity-60' : 'opacity-100',
         ].join(' ')}
       >
         <div className="hidden md:grid grid-cols-[1fr_2fr_1.5fr_1fr_1fr] gap-4 px-6 py-3 border-b border-[#1a2d3d]">
@@ -281,7 +289,7 @@ export default function TransactionsTable() {
           ))}
         </div>
 
-        {data.data.length === 0 && (
+        {allTransactions.length === 0 && (
           <div className="flex flex-col items-center justify-center py-16 gap-2">
             <p className="text-sm font-medium text-white">
               No transactions found
@@ -303,20 +311,20 @@ export default function TransactionsTable() {
           </div>
         ))}
 
-        {data.data.length > 0 && (
-          <div className="flex items-center justify-between px-6 py-4">
-            <span className="text-sm text-[#94a3b8]">
-              Showing {(page - 1) * 10 + 1} to{' '}
-              {Math.min(page * 10, data.pagination.total)} of{' '}
-              {data.pagination.total} entries
-            </span>
-            <TransactionsPagination
-              page={page}
-              totalPages={data.pagination.totalPages}
-              onPageChange={setPage}
-            />
-          </div>
-        )}
+        {/* Sentinel + loading indicator */}
+        <div
+          ref={sentinelRef}
+          className="px-6 py-4 flex items-center justify-center"
+        >
+          {isFetchingNextPage && (
+            <Loader2 size={20} className="animate-spin text-[#00C896]" />
+          )}
+          {!hasNextPage && allTransactions.length > 0 && (
+            <p className="text-xs text-[#8b949e]">
+              {total} transaction{total !== 1 ? 's' : ''} total
+            </p>
+          )}
+        </div>
       </div>
     </div>
   )

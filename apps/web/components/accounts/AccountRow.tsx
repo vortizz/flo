@@ -154,7 +154,50 @@ export default function AccountRow({ account }: { account: Account }) {
 
   return (
     <>
-      <div className="grid grid-cols-[2fr_2fr_1fr_1fr_1fr_1.5fr_80px] gap-4 px-6 py-4 border-b border-[#1a2d3d] hover:bg-[#ffffff04] transition-colors items-center">
+      <div className="md:hidden flex flex-col gap-3 px-4 py-4 border-b border-[#1a2d3d]">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <BankAvatar name={account.bankName} logoUrl={account.logoUrl} />
+            <div>
+              <p className="text-sm text-white font-medium">
+                {account.bankName}
+              </p>
+              <p className="text-[10px] text-[#8b949e]">
+                {account.accountName}
+                {account.last4 ? ` ••• ${account.last4}` : ''}
+              </p>
+            </div>
+          </div>
+          <StatusBadge status={account.status} />
+        </div>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <span
+              className={`text-sm font-medium ${account.balance < 0 ? 'text-red-400' : 'text-white'}`}
+            >
+              {formatAUD(account.balance)}
+            </span>
+            <span className="text-xs text-[#8b949e]">
+              {formatLastSync(account.lastSyncedAt)}
+            </span>
+          </div>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={handleSync}
+              disabled={isSyncing}
+              className="w-8 h-8 flex items-center justify-center rounded-md text-[#8b949e] hover:text-white hover:bg-[#1a2d3d] transition-colors disabled:opacity-50"
+            >
+              <RefreshCw
+                size={14}
+                className={isSyncing ? 'animate-spin' : ''}
+              />
+            </button>
+            <AccountActionsMenu onDisconnect={() => setShowModal(true)} />
+          </div>
+        </div>
+      </div>
+
+      <div className="hidden md:grid grid-cols-[2fr_2fr_1fr_1fr_1fr_1.5fr_80px] gap-4 px-6 py-4 border-b border-[#1a2d3d] hover:bg-[#ffffff04] transition-colors items-center">
         {/* Bank */}
         <div className="flex items-center gap-3 min-w-0">
           <BankAvatar name={account.bankName} logoUrl={account.logoUrl} />
