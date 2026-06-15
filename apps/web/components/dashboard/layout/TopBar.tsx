@@ -97,14 +97,15 @@ export default function TopBar({ onMenuToggle }: { onMenuToggle: () => void }) {
           )}
 
           {!isAccounts ? (
-            <div className="hidden md:flex items-center gap-2 bg-[#111c2a] border border-[#1a2d3d] rounded-lg px-4 w-48 py-2 lg:w-64 focus-within:border-[#00C896]/40 transition-colors">
-              <Search size={15} className="text-[#8b949e] shrink-0" />
-              <input
-                type="text"
-                placeholder="Search..."
-                className="bg-transparent border-none outline-none text-sm text-[#e6edf3] placeholder:text-[#8b949e] w-full"
-              />
-            </div>
+            // <div className="hidden md:flex items-center gap-2 bg-[#111c2a] border border-[#1a2d3d] rounded-lg px-4 w-48 py-2 lg:w-64 focus-within:border-[#00C896]/40 transition-colors">
+            //   <Search size={15} className="text-[#8b949e] shrink-0" />
+            //   <input
+            //     type="text"
+            //     placeholder="Search..."
+            //     className="bg-transparent border-none outline-none text-sm text-[#e6edf3] placeholder:text-[#8b949e] w-full"
+            //   />
+            // </div>
+            <></>
           ) : (
             <button
               onClick={() => router.push('/onboarding?source=accounts')}
@@ -115,13 +116,13 @@ export default function TopBar({ onMenuToggle }: { onMenuToggle: () => void }) {
             </button>
           )}
 
-          <button
+          {/* <button
             aria-label="Notifications"
             className="relative flex items-center justify-center w-10 h-10 border border-white/10 rounded-full hover:bg-white/5 transition-colors"
           >
             <Bell size={18} className="text-[#8b949e]" />
             <span className="absolute top-2 right-2.5 w-2 h-2 rounded-full bg-[#00C896] border border-[#040e1a]" />
-          </button>
+          </button> */}
         </div>
       </div>
 
