@@ -84,13 +84,15 @@ export default function TopBar({ onMenuToggle }: { onMenuToggle: () => void }) {
             <button
               onClick={handleSyncAll}
               disabled={isSyncingAll}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#00C896]/10 border border-[#00C896]/20 text-[#00C896] text-sm font-medium hover:bg-[#00C896]/20 transition-colors disabled:opacity-50"
+              className="flex items-center gap-2 px-2 sm:px-4 py-2 rounded-lg bg-[#00C896]/10 border border-[#00C896]/20 text-[#00C896] text-sm font-medium hover:bg-[#00C896]/20 transition-colors disabled:opacity-50"
             >
               <RefreshCw
                 size={14}
                 className={isSyncingAll ? 'animate-spin' : ''}
               />
-              {isSyncingAll ? 'Syncing...' : 'Sync All'}
+              <span className="hidden sm:block">
+                {isSyncingAll ? 'Syncing...' : 'Sync All'}
+              </span>
             </button>
           )}
 
