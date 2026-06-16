@@ -31,7 +31,11 @@ export class SyncService {
 
     for (const user of users) {
       const accounts = await this.prisma.account.findMany({
-        where: { userId: user.id, status: AccountStatus.CONNECTED },
+        where: {
+          userId: user.id,
+          status: AccountStatus.CONNECTED,
+          isCash: false,
+        },
         select: { id: true },
       })
 

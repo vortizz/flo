@@ -1,9 +1,20 @@
-import { Controller, Get, Query } from '@nestjs/common'
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Query,
+} from '@nestjs/common'
 import { GetTransactionsDto } from './dto/get-transactions.dto'
 import { TransactionsService } from './transactions.service'
 import { Timezone } from 'src/common/decorators/timezone.decorator'
 import { User } from 'src/common/decorators/user.decorator'
 import type { ClerkUser } from 'src/common/types'
+import { CreateManualTransactionDto } from './dto/create-manual-transaction.dto'
+import { UpdateManualTransactionDto } from './dto/update-manual-transaction.dto'
 
 @Controller('transactions')
 export class TransactionsController {
@@ -21,5 +32,31 @@ export class TransactionsController {
   @Get('filter-options')
   getFilterOptions(@User() user: ClerkUser) {
     return this.transactionsService.getFilterOptions(user.userId)
+  }
+
+  @Post('manual')
+  createManualTransaction(
+    @Body() body: CreateManualTransactionDto,
+    @User() user: ClerkUser,
+  ) {
+    return this.transactionsService.createManualTransaction(user.userId, body)
+  }
+
+  @Patch(':id')
+  updateManualTransaction(
+    @Param('id') id: string,
+    @Body() body: UpdateManualTransactionDto,
+    @User() user: ClerkUser,
+  ) {
+    return this.transactionsService.updateManualTransaction(
+      user.userId,
+      id,
+      body,
+    )
+  }
+
+  @Delete(':id')
+  deleteManualTransaction(@Param('id') id: string, @User() user: ClerkUser) {
+    return this.transactionsService.deleteManualTransaction(user.userId, id)
   }
 }

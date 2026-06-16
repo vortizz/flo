@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '@clerk/nextjs'
-import { RefreshCw, CircleCheck, TriangleAlert } from 'lucide-react'
+import { RefreshCw, CircleCheck, TriangleAlert, HandCoins } from 'lucide-react'
 import { type Account, deleteAccount, syncAccount } from '@/lib/api/accounts'
 import AccountActionsMenu from './AccountActionsMenu'
 import DisconnectModal from './DisconnectModal'
@@ -14,7 +14,7 @@ function formatAUD(amount: number) {
   return new Intl.NumberFormat('en-AU', {
     style: 'currency',
     currency: 'AUD',
-    minimumFractionDigits: 0,
+    minimumFractionDigits: 2,
   }).format(amount)
 }
 
@@ -30,10 +30,20 @@ function formatLastSync(dateStr: string | null) {
 function BankAvatar({
   name,
   logoUrl,
+  isCash,
 }: {
   name: string
   logoUrl: string | null
+  isCash: boolean
 }) {
+  if (isCash) {
+    return (
+      <div className="w-9 h-9 rounded-full flex items-center justify-center shrink-0 bg-[#00C896]/10 border border-[#00C896]/20">
+        <HandCoins size={16} className="text-[#00C896]" />
+      </div>
+    )
+  }
+
   if (logoUrl) {
     return (
       <Image
@@ -45,6 +55,7 @@ function BankAvatar({
       />
     )
   }
+
   const colors: Record<string, string> = {
     CBA: '#f5a623',
     ANZ: '#007DBA',
@@ -71,7 +82,22 @@ function BankAvatar({
   )
 }
 
-function StatusBadge({ status }: { status: Account['status'] }) {
+function StatusBadge({
+  status,
+  isCash,
+}: {
+  status: Account['status']
+  isCash: boolean
+}) {
+  if (isCash) {
+    return (
+      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs w-fit border text-[#00C896] bg-[#00C896]/10 border-[#00C896]/20">
+        <HandCoins width={10} height={10} />
+        Manual
+      </span>
+    )
+  }
+
   const config = {
     connected: {
       icon: <CircleCheck width={10} height={10} />,
@@ -154,10 +180,15 @@ export default function AccountRow({ account }: { account: Account }) {
 
   return (
     <>
+      {/* Mobile card */}
       <div className="md:hidden flex flex-col gap-3 px-4 py-4 border-b border-[#1a2d3d]">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <BankAvatar name={account.bankName} logoUrl={account.logoUrl} />
+            <BankAvatar
+              name={account.bankName}
+              logoUrl={account.logoUrl}
+              isCash={account.isCash}
+            />
             <div>
               <p className="text-sm text-white font-medium">
                 {account.bankName}
@@ -168,7 +199,7 @@ export default function AccountRow({ account }: { account: Account }) {
               </p>
             </div>
           </div>
-          <StatusBadge status={account.status} />
+          <StatusBadge status={account.status} isCash={account.isCash} />
         </div>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -177,30 +208,39 @@ export default function AccountRow({ account }: { account: Account }) {
             >
               {formatAUD(account.balance)}
             </span>
-            <span className="text-xs text-[#8b949e]">
-              {formatLastSync(account.lastSyncedAt)}
-            </span>
+            {!account.isCash && (
+              <span className="text-xs text-[#8b949e]">
+                {formatLastSync(account.lastSyncedAt)}
+              </span>
+            )}
           </div>
-          <div className="flex items-center gap-1">
-            <button
-              onClick={handleSync}
-              disabled={isSyncing}
-              className="w-8 h-8 flex items-center justify-center rounded-md text-[#8b949e] hover:text-white hover:bg-[#1a2d3d] transition-colors disabled:opacity-50"
-            >
-              <RefreshCw
-                size={14}
-                className={isSyncing ? 'animate-spin' : ''}
-              />
-            </button>
-            <AccountActionsMenu onDisconnect={() => setShowModal(true)} />
-          </div>
+          {!account.isCash && (
+            <div className="flex items-center gap-1">
+              <button
+                onClick={handleSync}
+                disabled={isSyncing}
+                className="w-8 h-8 flex items-center justify-center rounded-md text-[#8b949e] hover:text-white hover:bg-[#1a2d3d] transition-colors disabled:opacity-50"
+              >
+                <RefreshCw
+                  size={14}
+                  className={isSyncing ? 'animate-spin' : ''}
+                />
+              </button>
+              <AccountActionsMenu onDisconnect={() => setShowModal(true)} />
+            </div>
+          )}
         </div>
       </div>
 
+      {/* Desktop row */}
       <div className="hidden md:grid grid-cols-[2fr_2fr_1fr_1fr_1fr_1.5fr_80px] gap-4 px-6 py-4 border-b border-[#1a2d3d] hover:bg-[#ffffff04] transition-colors items-center">
         {/* Bank */}
         <div className="flex items-center gap-3 min-w-0">
-          <BankAvatar name={account.bankName} logoUrl={account.logoUrl} />
+          <BankAvatar
+            name={account.bankName}
+            logoUrl={account.logoUrl}
+            isCash={account.isCash}
+          />
           <span className="text-sm text-white font-medium truncate">
             {account.bankName}
           </span>
@@ -233,22 +273,29 @@ export default function AccountRow({ account }: { account: Account }) {
 
         {/* Last Sync */}
         <span className="text-sm text-[#8b949e]">
-          {formatLastSync(account.lastSyncedAt)}
+          {account.isCash ? '—' : formatLastSync(account.lastSyncedAt)}
         </span>
 
         {/* Status */}
-        <StatusBadge status={account.status} />
+        <StatusBadge status={account.status} isCash={account.isCash} />
 
         {/* Actions */}
         <div className="flex items-center gap-1">
-          <button
-            onClick={handleSync}
-            disabled={isSyncing}
-            className="w-8 h-8 flex items-center justify-center rounded-md text-[#8b949e] hover:text-white hover:bg-[#1a2d3d] transition-colors disabled:opacity-50"
-          >
-            <RefreshCw size={14} className={isSyncing ? 'animate-spin' : ''} />
-          </button>
-          <AccountActionsMenu onDisconnect={() => setShowModal(true)} />
+          {!account.isCash && (
+            <>
+              <button
+                onClick={handleSync}
+                disabled={isSyncing}
+                className="w-8 h-8 flex items-center justify-center rounded-md text-[#8b949e] hover:text-white hover:bg-[#1a2d3d] transition-colors disabled:opacity-50"
+              >
+                <RefreshCw
+                  size={14}
+                  className={isSyncing ? 'animate-spin' : ''}
+                />
+              </button>
+              <AccountActionsMenu onDisconnect={() => setShowModal(true)} />
+            </>
+          )}
         </div>
       </div>
 

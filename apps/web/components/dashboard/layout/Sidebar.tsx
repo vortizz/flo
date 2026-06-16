@@ -8,10 +8,12 @@ export default function Sidebar({
   collapsed,
   mobileOpen,
   onClose,
+  onAddTransaction,
 }: {
   collapsed: boolean
   mobileOpen: boolean
   onClose: () => void
+  onAddTransaction?: () => void
 }) {
   return (
     <aside
@@ -28,7 +30,11 @@ export default function Sidebar({
     >
       <div className={`p-6 space-y-10 ${collapsed ? 'lg:px-3' : ''}`}>
         <SidebarLogo collapsed={collapsed} />
-        <SidebarNav collapsed={collapsed} onClose={onClose} />
+        <SidebarNav
+          collapsed={collapsed}
+          onClose={onClose}
+          onAddTransaction={onAddTransaction}
+        />
       </div>
       <div className={`mt-auto p-6 ${collapsed ? 'lg:px-3' : ''}`}>
         <SidebarUser collapsed={collapsed} onClose={onClose} />

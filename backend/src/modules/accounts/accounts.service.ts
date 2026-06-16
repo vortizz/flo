@@ -46,7 +46,8 @@ export class AccountsService {
         last4: a.last4,
         lastSyncedAt: a.lastSyncedAt,
         logoUrl: a.institution?.logoUrl ?? null,
-        status: 'connected',
+        status: a.status.toLowerCase() as 'connected' | 'disconnected',
+        isCash: a.isCash,
       })),
     }
   }
