@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common'
 import { PrismaService } from '../../prisma.service'
+import { AccountStatus } from '@prisma/client'
 
 @Injectable()
 export class UsersService {
@@ -26,6 +27,21 @@ export class UsersService {
           mobile: data.mobile,
         },
       })
+
+      await this.prisma.account.upsert({
+        where: { basiqId: `cash-${user.id}` },
+        update: {},
+        create: {
+          userId: user.id,
+          basiqId: `cash-${user.id}`,
+          bankName: 'Cash',
+          accountName: 'Cash',
+          balance: 0,
+          status: AccountStatus.CONNECTED,
+          isCash: true,
+        },
+      })
+
       this.logger.log(`User created/found: ${user.id}`)
       return user
     } catch (error) {

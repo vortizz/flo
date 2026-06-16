@@ -1,7 +1,13 @@
-import { Injectable } from '@nestjs/common'
+import {
+  Injectable,
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common'
 import { PrismaService } from '../../prisma.service'
 import { GetTransactionsDto } from './dto/get-transactions.dto'
-import { Institution } from '@prisma/client'
+import { CreateManualTransactionDto } from './dto/create-manual-transaction.dto'
+import { UpdateManualTransactionDto } from './dto/update-manual-transaction.dto'
+import { Institution, SourceType } from '@prisma/client'
 import { startOfDayUtc, endOfDayUtc } from 'src/common/utils/date.helper'
 
 @Injectable()
@@ -55,11 +61,17 @@ export class TransactionsService {
           category: true,
           description: true,
           date: true,
+          source: true,
           account: {
             select: {
               id: true,
               accountName: true,
               bankName: true,
+              isCash: true,
+              last4: true,
+              institution: {
+                select: { logoUrl: true },
+              },
             },
           },
         },
@@ -76,8 +88,12 @@ export class TransactionsService {
         date: t.date,
         amount: Number(t.amount),
         type: t.type,
+        source: t.source,
+        isManual: t.account.isCash,
         account: t.account.accountName,
         accountId: t.account.id,
+        logoUrl: t.account.institution?.logoUrl ?? null,
+        last4: t.account.last4,
       })),
       pagination: {
         page,
@@ -101,6 +117,7 @@ export class TransactionsService {
           accountName: true,
           bankName: true,
           last4: true,
+          isCash: true,
           institution: {
             select: { logoUrl: true },
           },
@@ -120,9 +137,121 @@ export class TransactionsService {
         accountName: a.accountName,
         bankName: a.bankName,
         last4: a.last4,
+        isCash: a.isCash,
         logoUrl: (a.institution as Institution)?.logoUrl ?? null,
       })),
       categories: categories.map(t => t.category!).filter(c => c !== 'Unknown'),
     }
+  }
+
+  async createManualTransaction(
+    clerkId: string,
+    dto: CreateManualTransactionDto,
+  ) {
+    const user = await this.prisma.user.findUniqueOrThrow({
+      where: { clerkId },
+    })
+
+    const cashAccount = await this.prisma.account.findFirst({
+      where: { userId: user.id, isCash: true },
+    })
+
+    if (!cashAccount) throw new NotFoundException('Cash account not found')
+
+    const transaction = await this.prisma.transaction.create({
+      data: {
+        accountId: cashAccount.id,
+        amount: dto.amount,
+        type: dto.type,
+        merchant: dto.merchant,
+        category: dto.category ?? null,
+        description: dto.description ?? null,
+        date: new Date(dto.date),
+        source: SourceType.MANUAL,
+      },
+    })
+
+    await this.updateCashBalance(cashAccount.id)
+
+    return transaction
+  }
+
+  async updateManualTransaction(
+    clerkId: string,
+    transactionId: string,
+    dto: UpdateManualTransactionDto,
+  ) {
+    const user = await this.prisma.user.findUniqueOrThrow({
+      where: { clerkId },
+    })
+
+    const transaction = await this.prisma.transaction.findUnique({
+      where: { id: transactionId },
+      include: { account: true },
+    })
+
+    if (!transaction) throw new NotFoundException('Transaction not found')
+    if (transaction.account.userId !== user.id)
+      throw new ForbiddenException('Not your transaction')
+    if (transaction.source !== SourceType.MANUAL)
+      throw new ForbiddenException('Can only edit manual transactions')
+
+    const updated = await this.prisma.transaction.update({
+      where: { id: transactionId },
+      data: {
+        ...(dto.type && { type: dto.type }),
+        ...(dto.amount && { amount: dto.amount }),
+        ...(dto.merchant && { merchant: dto.merchant }),
+        ...(dto.category !== undefined && { category: dto.category }),
+        ...(dto.description !== undefined && { description: dto.description }),
+        ...(dto.date && { date: new Date(dto.date) }),
+      },
+    })
+
+    await this.updateCashBalance(transaction.accountId)
+
+    return updated
+  }
+
+  async deleteManualTransaction(clerkId: string, transactionId: string) {
+    const user = await this.prisma.user.findUniqueOrThrow({
+      where: { clerkId },
+    })
+
+    const transaction = await this.prisma.transaction.findUnique({
+      where: { id: transactionId },
+      include: { account: true },
+    })
+
+    if (!transaction) throw new NotFoundException('Transaction not found')
+    if (transaction.account.userId !== user.id)
+      throw new ForbiddenException('Not your transaction')
+    if (transaction.source !== SourceType.MANUAL)
+      throw new ForbiddenException('Can only delete manual transactions')
+
+    await this.prisma.transaction.delete({ where: { id: transactionId } })
+    await this.updateCashBalance(transaction.accountId)
+
+    return { success: true }
+  }
+
+  private async updateCashBalance(accountId: string) {
+    const result = await this.prisma.transaction.groupBy({
+      by: ['type'],
+      where: { accountId },
+      _sum: { amount: true },
+    })
+
+    const credits = Number(
+      result.find(r => r.type === 'CREDIT')?._sum.amount ?? 0,
+    )
+    const debits = Number(
+      result.find(r => r.type === 'DEBIT')?._sum.amount ?? 0,
+    )
+
+    await this.prisma.account.update({
+      where: { id: accountId },
+      data: { balance: credits - debits },
+    })
   }
 }

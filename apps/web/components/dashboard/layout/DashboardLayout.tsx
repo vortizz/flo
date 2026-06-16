@@ -4,6 +4,8 @@ import { useState, useEffect, useCallback, Suspense } from 'react'
 import { DashboardProvider } from './DashboardContext'
 import Sidebar from './Sidebar'
 import TopBar from './TopBar'
+import AddTransactionModal from '@/components/transactions/AddTransactionModal'
+import { useQueryClient } from '@tanstack/react-query'
 
 export default function DashboardLayout({
   children,
@@ -13,11 +15,13 @@ export default function DashboardLayout({
 }) {
   const [collapsed, setCollapsed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [showAddTransaction, setShowAddTransaction] = useState(false)
   const [isDesktop, setIsDesktop] = useState(
     () =>
       typeof window !== 'undefined' &&
       window.matchMedia('(min-width: 1024px)').matches,
   )
+  const queryClient = useQueryClient()
 
   useEffect(() => {
     const mq = window.matchMedia('(min-width: 1024px)')
@@ -56,15 +60,29 @@ export default function DashboardLayout({
             collapsed={collapsed}
             mobileOpen={mobileOpen}
             onClose={() => setMobileOpen(false)}
+            onAddTransaction={() => setShowAddTransaction(true)}
           />
 
           <div className="flex flex-col flex-1 overflow-hidden min-w-0">
-            <TopBar onMenuToggle={toggle} />
+            <TopBar
+              onMenuToggle={toggle}
+              onAddTransaction={() => setShowAddTransaction(true)}
+            />
             <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 lg:p-6 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-[#1a2d3d]">
               {children}
             </main>
           </div>
         </div>
+
+        {showAddTransaction && (
+          <AddTransactionModal
+            onClose={() => setShowAddTransaction(false)}
+            onSuccess={() => {
+              queryClient.invalidateQueries({ queryKey: ['transactions'] })
+              queryClient.invalidateQueries({ queryKey: ['accounts'] })
+            }}
+          />
+        )}
       </DashboardProvider>
     </Suspense>
   )

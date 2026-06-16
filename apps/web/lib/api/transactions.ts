@@ -8,6 +8,9 @@ export interface Transaction {
   type: 'DEBIT' | 'CREDIT'
   account: string
   accountId: string
+  isManual: boolean
+  logoUrl: string | null
+  last4: string | null
 }
 
 export interface TransactionsPagination {
@@ -40,8 +43,18 @@ export interface FilterOptions {
     bankName: string
     last4: string | null
     logoUrl: string | null
+    isCash: boolean
   }[]
   categories: string[]
+}
+
+export interface ManualTransactionData {
+  type: 'DEBIT' | 'CREDIT'
+  amount: number
+  merchant: string
+  category?: string
+  description?: string
+  date: string
 }
 
 export async function fetchTransactions(
@@ -82,4 +95,65 @@ export async function fetchFilterOptions(
   )
   if (!res.ok) throw new Error('Failed to fetch filter options')
   return res.json()
+}
+
+export async function createManualTransaction(
+  data: ManualTransactionData,
+  getToken: () => Promise<string | null>,
+): Promise<Transaction> {
+  const token = await getToken()
+  const res = await fetch(
+    `${process.env.NEXT_PUBLIC_API_URL}/api/transactions/manual`,
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+        'x-timezone': Intl.DateTimeFormat().resolvedOptions().timeZone,
+      },
+      body: JSON.stringify(data),
+    },
+  )
+  if (!res.ok) throw new Error('Failed to create transaction')
+  return res.json()
+}
+
+export async function updateManualTransaction(
+  id: string,
+  data: Partial<ManualTransactionData>,
+  getToken: () => Promise<string | null>,
+): Promise<Transaction> {
+  const token = await getToken()
+  const res = await fetch(
+    `${process.env.NEXT_PUBLIC_API_URL}/api/transactions/${id}`,
+    {
+      method: 'PATCH',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+        'x-timezone': Intl.DateTimeFormat().resolvedOptions().timeZone,
+      },
+      body: JSON.stringify(data),
+    },
+  )
+  if (!res.ok) throw new Error('Failed to update transaction')
+  return res.json()
+}
+
+export async function deleteManualTransaction(
+  id: string,
+  getToken: () => Promise<string | null>,
+): Promise<void> {
+  const token = await getToken()
+  const res = await fetch(
+    `${process.env.NEXT_PUBLIC_API_URL}/api/transactions/${id}`,
+    {
+      method: 'DELETE',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'x-timezone': Intl.DateTimeFormat().resolvedOptions().timeZone,
+      },
+    },
+  )
+  if (!res.ok) throw new Error('Failed to delete transaction')
 }

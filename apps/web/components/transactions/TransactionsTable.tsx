@@ -8,6 +8,7 @@ import { fetchTransactions, type Transaction } from '@/lib/api/transactions'
 import TransactionsTableSkeleton from './TransactionsTableSkeleton'
 import TransactionRow from './TransactionRow'
 import TransactionsFilters from './TransactionsFilters'
+import TransactionDetailPanel from './detail'
 import { useDebounce } from '@/hooks/useDebounce'
 import { Loader2 } from 'lucide-react'
 
@@ -59,6 +60,10 @@ export default function TransactionsTable() {
   const pathname = usePathname()
   const sentinelRef = useRef<HTMLDivElement>(null)
 
+  const [selectedTransaction, setSelectedTransaction] = useState<
+    Transaction | undefined
+  >()
+
   const getInitialParams = () => {
     if (typeof window === 'undefined') return new URLSearchParams()
     return new URLSearchParams(window.location.search)
@@ -92,7 +97,6 @@ export default function TransactionsTable() {
 
   const debouncedSearch = useDebounce(search, 500)
 
-  // Sync filters to URL
   useEffect(() => {
     const params = new URLSearchParams()
     if (search) params.set('search', search)
@@ -187,7 +191,6 @@ export default function TransactionsTable() {
     staleTime: 0,
   })
 
-  // IntersectionObserver sentinel
   const handleObserver = useCallback(
     (entries: IntersectionObserverEntry[]) => {
       const target = entries[0]
@@ -215,23 +218,32 @@ export default function TransactionsTable() {
 
   const total = data?.pages[0]?.pagination.total ?? 0
 
+  function changeFilter(fn: () => void) {
+    fn()
+    setSelectedTransaction(undefined)
+  }
+
   const filters = {
     type,
-    onTypeChange: (v: 'DEBIT' | 'CREDIT' | undefined) => setType(v),
+    onTypeChange: (v: 'DEBIT' | 'CREDIT' | undefined) =>
+      changeFilter(() => setType(v)),
     days,
-    onDaysChange: (v: string) => setDays(v),
+    onDaysChange: (v: string) => changeFilter(() => setDays(v)),
     customRange,
     onCustomRangeChange: (
       v: { from: Date | undefined; to?: Date | undefined } | undefined,
-    ) => setCustomRange(v),
+    ) => changeFilter(() => setCustomRange(v)),
     accountId,
-    onAccountChange: (v: string | undefined) => setAccountId(v),
+    onAccountChange: (v: string | undefined) =>
+      changeFilter(() => setAccountId(v)),
     category,
-    onCategoryChange: (v: string | undefined) => setCategory(v),
+    onCategoryChange: (v: string | undefined) =>
+      changeFilter(() => setCategory(v)),
     search,
-    onSearchChange: (v: string) => setSearch(v),
+    onSearchChange: (v: string) => changeFilter(() => setSearch(v)),
     hasActiveFilters,
     onClearAll: () => {
+      setSelectedTransaction(undefined)
       setSearch('')
       setType(undefined)
       setDays('30')
@@ -240,6 +252,70 @@ export default function TransactionsTable() {
       setCategory(undefined)
     },
   }
+
+  const grouped = groupByDate(allTransactions)
+
+  const tableContent = (
+    <div
+      className={[
+        'bg-[linear-gradient(145deg,rgba(30,41,59,0.7)_0%,rgba(15,23,42,0.4)_100%)] backdrop-blur-md',
+        'shadow-[0_4px_24px_-1px_rgba(0,0,0,0.2)] border border-[#ffffff0d] rounded-xl overflow-hidden',
+      ].join(' ')}
+    >
+      <div className="hidden md:grid grid-cols-[1fr_2fr_1.5fr_1fr_1fr] gap-4 px-6 py-3 border-b border-[#1a2d3d]">
+        {['Date', 'Merchant', 'Category', 'Account', 'Amount'].map(h => (
+          <span
+            key={h}
+            className={[
+              'text-xs font-semibold text-[#94a3b8] uppercase tracking-wider',
+              h === 'Amount' ? 'text-right' : '',
+            ].join(' ')}
+          >
+            {h}
+          </span>
+        ))}
+      </div>
+
+      {allTransactions.length === 0 && (
+        <div className="flex flex-col items-center justify-center py-16 gap-2">
+          <p className="text-sm font-medium text-white">
+            No transactions found
+          </p>
+          <p className="text-xs text-[#8b949e]">Try adjusting your filters</p>
+        </div>
+      )}
+
+      {[...grouped.entries()].map(([date, txs]) => (
+        <div key={date}>
+          <div className="px-6 py-2 bg-[#071828] border-b border-[#1a2d3d]">
+            <span className="text-xs font-semibold text-[#8b949e]">{date}</span>
+          </div>
+          {txs.map(tx => (
+            <TransactionRow
+              key={tx.id}
+              transaction={tx}
+              isSelected={selectedTransaction?.id === tx.id}
+              onClick={() => setSelectedTransaction(tx)}
+            />
+          ))}
+        </div>
+      ))}
+
+      <div
+        ref={sentinelRef}
+        className="px-6 py-4 flex items-center justify-center"
+      >
+        {isFetchingNextPage && (
+          <Loader2 size={20} className="animate-spin text-[#00C896]" />
+        )}
+        {!hasNextPage && allTransactions.length > 0 && (
+          <p className="text-xs text-[#8b949e]">
+            {total} transaction{total !== 1 ? 's' : ''} total
+          </p>
+        )}
+      </div>
+    </div>
+  )
 
   if (isLoading && !data) {
     return (
@@ -263,69 +339,45 @@ export default function TransactionsTable() {
     )
   }
 
-  const grouped = groupByDate(allTransactions)
-
   return (
-    <div className="flex flex-col gap-6">
-      <TransactionsFilters {...filters} />
+    <>
+      {/* Mobile backdrop */}
+      {selectedTransaction && (
+        <div
+          className="fixed inset-0 bg-black/60 z-40 xl:hidden"
+          onClick={() => setSelectedTransaction(undefined)}
+        />
+      )}
 
-      <div
-        className={[
-          'bg-[linear-gradient(145deg,rgba(30,41,59,0.7)_0%,rgba(15,23,42,0.4)_100%)] backdrop-blur-md',
-          'shadow-[0_4px_24px_-1px_rgba(0,0,0,0.2)] border border-[#ffffff0d] rounded-xl overflow-hidden',
-        ].join(' ')}
-      >
-        <div className="hidden md:grid grid-cols-[1fr_2fr_1.5fr_1fr_1fr] gap-4 px-6 py-3 border-b border-[#1a2d3d]">
-          {['Date', 'Merchant', 'Category', 'Account', 'Amount'].map(h => (
-            <span
-              key={h}
-              className={[
-                'text-xs font-semibold text-[#94a3b8] uppercase tracking-wider',
-                h === 'Amount' ? 'text-right' : '',
-              ].join(' ')}
-            >
-              {h}
-            </span>
-          ))}
+      <div className="flex gap-6 items-start">
+        {/* Main content */}
+        <div className="flex flex-col gap-6 min-w-0 flex-1">
+          <TransactionsFilters {...filters} />
+          {tableContent}
         </div>
 
-        {allTransactions.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-16 gap-2">
-            <p className="text-sm font-medium text-white">
-              No transactions found
-            </p>
-            <p className="text-xs text-[#8b949e]">Try adjusting your filters</p>
+        {/* RHP — desktop */}
+        {selectedTransaction && (
+          <div className="hidden xl:block sticky shrink-0 w-90 h-[calc(100vh-82px)] -mt-6 -mr-6 -mb-6 -top-6">
+            <TransactionDetailPanel
+              key={selectedTransaction.id}
+              transaction={selectedTransaction}
+              onClose={() => setSelectedTransaction(undefined)}
+            />
           </div>
         )}
 
-        {[...grouped.entries()].map(([date, txs]) => (
-          <div key={date}>
-            <div className="px-6 py-2 bg-[#071828] border-b border-[#1a2d3d]">
-              <span className="text-xs font-semibold text-[#8b949e]">
-                {date}
-              </span>
-            </div>
-            {txs.map(tx => (
-              <TransactionRow key={tx.id} transaction={tx} />
-            ))}
+        {/* RHP — mobile */}
+        {selectedTransaction && (
+          <div className="xl:hidden fixed inset-y-0 right-0 z-50 w-full max-w-sm">
+            <TransactionDetailPanel
+              key={selectedTransaction.id}
+              transaction={selectedTransaction}
+              onClose={() => setSelectedTransaction(undefined)}
+            />
           </div>
-        ))}
-
-        {/* Sentinel + loading indicator */}
-        <div
-          ref={sentinelRef}
-          className="px-6 py-4 flex items-center justify-center"
-        >
-          {isFetchingNextPage && (
-            <Loader2 size={20} className="animate-spin text-[#00C896]" />
-          )}
-          {!hasNextPage && allTransactions.length > 0 && (
-            <p className="text-xs text-[#8b949e]">
-              {total} transaction{total !== 1 ? 's' : ''} total
-            </p>
-          )}
-        </div>
+        )}
       </div>
-    </div>
+    </>
   )
 }

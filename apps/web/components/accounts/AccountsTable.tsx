@@ -31,7 +31,11 @@ export default function AccountsTable() {
   ]
 
   const filtered =
-    data?.accounts.filter(a => (tab === 'all' ? true : a.status === tab)) ?? []
+    data?.accounts.filter(a => {
+      if (tab === 'all') return true
+      if (tab === 'manual') return a.isCash
+      return a.status === tab && !a.isCash
+    }) ?? []
 
   if (isLoading)
     return (

@@ -7,6 +7,7 @@ export interface Account {
   lastSyncedAt: string | null
   logoUrl: string | null
   status: 'connected' | 'disconnected' | 'syncing'
+  isCash: boolean
 }
 
 export interface AccountsSummary {

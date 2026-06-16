@@ -2,7 +2,13 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { LayoutDashboard, ListFilter, Building2, Settings } from 'lucide-react'
+import {
+  LayoutDashboard,
+  ListFilter,
+  Building2,
+  Settings,
+  Plus,
+} from 'lucide-react'
 
 const NAV_LINKS = [
   { label: 'Main Dashboard', href: '/dashboard', icon: LayoutDashboard },
@@ -14,9 +20,11 @@ const NAV_LINKS = [
 export default function SidebarNav({
   collapsed,
   onClose,
+  onAddTransaction,
 }: {
   collapsed: boolean
   onClose: () => void
+  onAddTransaction?: () => void
 }) {
   const pathname = usePathname()
 
@@ -54,6 +62,31 @@ export default function SidebarNav({
           </Link>
         )
       })}
+
+      {/* Quick action */}
+      <button
+        onClick={() => {
+          onClose()
+          onAddTransaction?.()
+        }}
+        title={collapsed ? 'Add Transaction' : undefined}
+        className={[
+          'w-full flex items-center gap-3 rounded-xl border border-dashed border-[#1a2d3d] hover:border-[#00C896]/40 hover:bg-[#00C896]/5 transition-colors group',
+          collapsed
+            ? 'lg:justify-center lg:px-0 lg:py-3 px-4 py-3'
+            : 'px-4 py-3',
+        ].join(' ')}
+      >
+        <Plus
+          size={20}
+          className="text-[#8b949e] group-hover:text-[#00C896] shrink-0 transition-colors"
+        />
+        {!collapsed && (
+          <span className="text-base font-medium text-[#8b949e] group-hover:text-[#00C896] whitespace-nowrap transition-colors">
+            Add Transaction
+          </span>
+        )}
+      </button>
     </nav>
   )
 }

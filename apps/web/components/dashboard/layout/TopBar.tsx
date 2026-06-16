@@ -2,7 +2,7 @@
 
 import { useAuth } from '@clerk/nextjs'
 import PeriodSelector from './PeriodSelector'
-import { Search, Bell, Menu, RefreshCw, Plus } from 'lucide-react'
+import { Menu, RefreshCw, Plus } from 'lucide-react'
 import { usePathname, useRouter } from 'next/navigation'
 import { useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
@@ -16,10 +16,17 @@ const ROUTE_TITLES: Record<string, string> = {
   '/settings': 'Settings',
 }
 
-export default function TopBar({ onMenuToggle }: { onMenuToggle: () => void }) {
+export default function TopBar({
+  onMenuToggle,
+  onAddTransaction,
+}: {
+  onMenuToggle: () => void
+  onAddTransaction?: () => void
+}) {
   const pathname = usePathname()
   const showPeriodSelector = pathname === '/dashboard'
   const isAccounts = pathname.startsWith('/accounts')
+  const isTransactions = pathname.startsWith('/transactions')
   const router = useRouter()
 
   const { getToken } = useAuth()
@@ -96,23 +103,23 @@ export default function TopBar({ onMenuToggle }: { onMenuToggle: () => void }) {
             </button>
           )}
 
-          {!isAccounts ? (
-            // <div className="hidden md:flex items-center gap-2 bg-[#111c2a] border border-[#1a2d3d] rounded-lg px-4 w-48 py-2 lg:w-64 focus-within:border-[#00C896]/40 transition-colors">
-            //   <Search size={15} className="text-[#8b949e] shrink-0" />
-            //   <input
-            //     type="text"
-            //     placeholder="Search..."
-            //     className="bg-transparent border-none outline-none text-sm text-[#e6edf3] placeholder:text-[#8b949e] w-full"
-            //   />
-            // </div>
-            <></>
-          ) : (
+          {isTransactions && (
+            <button
+              onClick={onAddTransaction}
+              className="flex items-center gap-2 bg-[#14b8a6] text-[#020617] font-semibold px-2 sm:px-4 py-2 rounded-lg text-sm hover:bg-[#0d9488] transition-colors"
+            >
+              <Plus width={14} height={14} />
+              <span className="hidden sm:block">Manual Transaction</span>
+            </button>
+          )}
+
+          {isAccounts && (
             <button
               onClick={() => router.push('/onboarding?source=accounts')}
               className="flex items-center gap-2 bg-[#14b8a6] text-[#020617] font-semibold px-2 sm:px-4 py-2 rounded-lg text-sm hover:bg-[#0d9488] transition-colors"
             >
               <Plus width={14} height={14} />
-              <span className="hidden sm:block">Add Bank Account</span>
+              <span className="hidden sm:block">Bank Account</span>
             </button>
           )}
 
