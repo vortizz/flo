@@ -79,8 +79,8 @@ export default function TransactionsTable() {
   const [accountId, setAccountId] = useState<string | undefined>(
     initParams.get('accountId') || undefined,
   )
-  const [category, setCategory] = useState<string | undefined>(
-    initParams.get('category') || undefined,
+  const [categoryId, setCategoryId] = useState<string | undefined>(
+    initParams.get('categoryId') || undefined,
   )
   const [customRange, setCustomRange] = useState<
     { from: Date | undefined; to?: Date | undefined } | undefined
@@ -103,7 +103,7 @@ export default function TransactionsTable() {
     if (type) params.set('type', type)
     if (days !== '30') params.set('days', days)
     if (accountId) params.set('accountId', accountId)
-    if (category) params.set('category', category)
+    if (categoryId) params.set('categoryId', categoryId)
     if (days === 'custom' && customRange?.from) {
       const f = customRange.from
       params.set(
@@ -119,7 +119,7 @@ export default function TransactionsTable() {
       )
     }
     router.replace(`${pathname}?${params.toString()}`, { scroll: false })
-  }, [search, type, days, customRange, accountId, category, pathname, router])
+  }, [search, type, days, customRange, accountId, categoryId, pathname, router])
 
   function toLocalDateStr(date: Date): string {
     return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
@@ -144,7 +144,7 @@ export default function TransactionsTable() {
   const hasActiveFilters = !!(
     type ||
     accountId ||
-    category ||
+    categoryId ||
     days !== '30' ||
     search
   )
@@ -164,7 +164,7 @@ export default function TransactionsTable() {
       fromStr,
       toStr,
       accountId,
-      category,
+      categoryId,
       debouncedSearch,
     ],
     queryFn: ({ pageParam = 1 }) =>
@@ -174,7 +174,7 @@ export default function TransactionsTable() {
           limit: LIMIT,
           type,
           accountId,
-          category,
+          categoryId,
           from: fromStr,
           to: toStr,
           search: debouncedSearch || undefined,
@@ -236,9 +236,9 @@ export default function TransactionsTable() {
     accountId,
     onAccountChange: (v: string | undefined) =>
       changeFilter(() => setAccountId(v)),
-    category,
+    categoryId,
     onCategoryChange: (v: string | undefined) =>
-      changeFilter(() => setCategory(v)),
+      changeFilter(() => setCategoryId(v)),
     search,
     onSearchChange: (v: string) => changeFilter(() => setSearch(v)),
     hasActiveFilters,
@@ -249,7 +249,7 @@ export default function TransactionsTable() {
       setDays('30')
       setCustomRange(undefined)
       setAccountId(undefined)
-      setCategory(undefined)
+      setCategoryId(undefined)
     },
   }
 
@@ -341,7 +341,6 @@ export default function TransactionsTable() {
 
   return (
     <>
-      {/* Mobile backdrop */}
       {selectedTransaction && (
         <div
           className="fixed inset-0 bg-black/60 z-40 xl:hidden"
@@ -350,13 +349,11 @@ export default function TransactionsTable() {
       )}
 
       <div className="flex gap-6 items-start">
-        {/* Main content */}
         <div className="flex flex-col gap-6 min-w-0 flex-1">
           <TransactionsFilters {...filters} />
           {tableContent}
         </div>
 
-        {/* RHP — desktop */}
         {selectedTransaction && (
           <div className="hidden xl:block sticky shrink-0 w-90 h-[calc(100vh-82px)] -mt-6 -mr-6 -mb-6 -top-6">
             <TransactionDetailPanel
@@ -367,7 +364,6 @@ export default function TransactionsTable() {
           </div>
         )}
 
-        {/* RHP — mobile */}
         {selectedTransaction && (
           <div className="xl:hidden fixed inset-y-0 right-0 z-50 w-full max-w-sm">
             <TransactionDetailPanel

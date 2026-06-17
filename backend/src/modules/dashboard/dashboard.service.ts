@@ -382,39 +382,64 @@ export class DashboardService {
         ? getCustomDateRanges(from, to, tz)
         : getDateRanges(period, tz)
 
-    const transactions = await this.prisma.transaction.findMany({
-      where: {
-        account: { userId: user.id },
-        date: { gte: current.from, lte: current.to },
-        type: 'DEBIT',
-      },
-      select: { amount: true, category: true },
-    })
+    const [transactions, otherCategory] = await Promise.all([
+      this.prisma.transaction.findMany({
+        where: {
+          account: { userId: user.id },
+          date: { gte: current.from, lte: current.to },
+          type: 'DEBIT',
+        },
+        select: {
+          amount: true,
+          category: { select: { name: true, color: true } },
+        },
+      }),
+      this.prisma.category.findFirst({
+        where: { name: 'Other' },
+        select: { color: true },
+      }),
+    ])
 
-    const byCategory = new Map<string, number>()
+    const otherColor = otherCategory?.color ?? '#8b949e'
+
+    const byCategory = new Map<string, { amount: number; color: string }>()
     for (const t of transactions) {
-      const key = t.category && t.category !== 'Unknown' ? t.category : 'Other'
-      byCategory.set(key, (byCategory.get(key) ?? 0) + Number(t.amount))
+      const key = t.category?.name ?? 'Other'
+      const color = t.category?.color ?? otherColor
+      const existing = byCategory.get(key)
+      byCategory.set(key, {
+        amount: (existing?.amount ?? 0) + Number(t.amount),
+        color: existing?.color ?? color,
+      })
     }
 
     const named = [...byCategory.entries()]
       .filter(([k]) => k !== 'Other')
-      .sort((a, b) => b[1] - a[1])
+      .sort((a, b) => b[1].amount - a[1].amount)
 
-    const otherFromUncategorised = byCategory.get('Other') ?? 0
+    const otherEntry = byCategory.get('Other')
     const top5 = named.slice(0, 5)
     const rest = named.slice(5)
     const otherAmount =
-      rest.reduce((sum, [, amount]) => sum + amount, 0) + otherFromUncategorised
+      rest.reduce((sum, [, v]) => sum + v.amount, 0) + (otherEntry?.amount ?? 0)
 
-    if (otherAmount > 0) top5.push(['Other', otherAmount])
-    const total = top5.reduce((sum, [, amount]) => sum + amount, 0)
+    if (otherAmount > 0)
+      top5.push(['Other', { amount: otherAmount, color: otherColor }])
 
-    return top5.map(([category, amount]) => ({
-      category,
-      amount: Math.round(amount * 100) / 100,
-      percentage: Math.round((amount / total) * 1000) / 10,
-    }))
+    const total = top5.reduce(
+      (sum, [, v]) => sum + (v as { amount: number; color: string }).amount,
+      0,
+    )
+
+    return top5.map(([category, value]) => {
+      const { amount, color } = value as { amount: number; color: string }
+      return {
+        category,
+        amount: Math.round(amount * 100) / 100,
+        percentage: Math.round((amount / total) * 1000) / 10,
+        color,
+      }
+    })
   }
 
   async getRecentTransactions(
@@ -445,12 +470,19 @@ export class DashboardService {
         amount: true,
         type: true,
         merchant: true,
-        category: true,
+        category: {
+          select: {
+            name: true,
+            color: true,
+            icon: true,
+          },
+        },
         date: true,
         account: {
           select: {
             accountName: true,
             bankName: true,
+            isCash: true,
           },
         },
       },
@@ -459,11 +491,14 @@ export class DashboardService {
     return transactions.map(t => ({
       id: t.id,
       merchant: t.merchant,
-      category: t.category,
+      category: t.category?.name ?? null,
+      categoryColor: t.category?.color ?? null,
+      categoryIcon: t.category?.icon ?? null,
       date: t.date,
       amount: Number(t.amount),
       type: t.type,
       account: `${t.account.bankName} · ${t.account.accountName}`,
+      isCash: t.account.isCash,
     }))
   }
 
@@ -510,6 +545,7 @@ export class DashboardService {
           balance: Number(a.balance),
           logoUrl: a.institution?.logoUrl ?? null,
           dailyChange,
+          isCash: a.isCash,
         }
       }),
     }

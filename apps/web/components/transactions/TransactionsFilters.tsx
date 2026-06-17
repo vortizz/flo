@@ -16,28 +16,6 @@ import AccountFilterDropdown from './AccountFilterDropdown'
 import DateFilterDropdown from './DateFilterDropdown'
 import TransactionsFiltersSkeleton from './TransactionsFiltersSkeleton'
 
-const CATEGORY_COLORS: Record<string, string> = {
-  'Cafes, Restaurants and Takeaway Food Services': '#ec4899',
-  'Supermarket and Grocery Stores': '#3b82f6',
-  'Fuel Retailing': '#f97316',
-  'Non-Depository Financing': '#8b949e',
-  'Television Broadcasting': '#a855f7',
-  'Property Operators': '#f59e0b',
-  'Department Stores': '#06b6d4',
-  'Telecommunications Services': '#6366f1',
-  'Health and General Insurance': '#10b981',
-  'Internet Publishing and Broadcasting': '#8b5cf6',
-  'Sports and Physical Recreation Activities': '#00C896',
-  'Air and Space Transport': '#0ea5e9',
-  'Specialised Food Retailing': '#f472b6',
-  'Pubs, Taverns and Bars': '#fb923c',
-  'Electricity Distribution': '#facc15',
-  'Other Health Care Services': '#34d399',
-  'Auxiliary Finance and Investment Services': '#60a5fa',
-  'Water Supply, Sewerage and Drainage Services': '#38bdf8',
-  Other: '#8b949e',
-}
-
 interface TransactionsFiltersProps {
   type: 'DEBIT' | 'CREDIT' | undefined
   onTypeChange: (v: 'DEBIT' | 'CREDIT' | undefined) => void
@@ -45,7 +23,7 @@ interface TransactionsFiltersProps {
   onDaysChange: (v: string) => void
   accountId: string | undefined
   onAccountChange: (v: string | undefined) => void
-  category: string | undefined
+  categoryId: string | undefined
   onCategoryChange: (v: string | undefined) => void
   customRange: { from: Date | undefined; to?: Date | undefined } | undefined
   onCustomRangeChange: (
@@ -64,7 +42,7 @@ export default function TransactionsFilters({
   onDaysChange,
   accountId,
   onAccountChange,
-  category,
+  categoryId,
   onCategoryChange,
   customRange,
   onCustomRangeChange,
@@ -83,9 +61,9 @@ export default function TransactionsFilters({
   const categoryOptions = [
     { label: 'All Categories', value: '' },
     ...(filterOptions?.categories.map(c => ({
-      label: c,
-      value: c,
-      color: CATEGORY_COLORS[c] ?? '#8b949e',
+      label: c.name,
+      value: c.id,
+      color: c.color,
     })) ?? []),
   ]
 
@@ -145,7 +123,7 @@ export default function TransactionsFilters({
           <FilterDropdown
             icon={<Tag size={14} />}
             options={categoryOptions}
-            value={category ?? ''}
+            value={categoryId ?? ''}
             onChange={v => onCategoryChange(v || undefined)}
           />
           <FilterDropdown

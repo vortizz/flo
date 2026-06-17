@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { Building2, ChevronDown, ChevronUp, Check } from 'lucide-react'
 import Image from 'next/image'
+import CashAvatar from '../ui/CashAvatar'
 
 interface Account {
   id: string
@@ -10,6 +11,7 @@ interface Account {
   bankName: string
   last4: string | null
   logoUrl: string | null
+  isCash: boolean
 }
 
 interface AccountFilterDropdownProps {
@@ -152,6 +154,8 @@ export default function AccountFilterDropdown({
                         height={20}
                         className="rounded-full"
                       />
+                    ) : account.isCash ? (
+                      <CashAvatar size="xs" />
                     ) : (
                       <BankInitials name={bank} />
                     )}

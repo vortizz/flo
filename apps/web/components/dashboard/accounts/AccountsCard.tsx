@@ -9,6 +9,7 @@ import {
   type DashboardAccount,
 } from '@/lib/api/dashboard'
 import AccountsCardSkeleton from './AccountsCardSkeleton'
+import CashAvatar from '@/components/ui/CashAvatar'
 
 function formatAUD(amount: number) {
   return new Intl.NumberFormat('en-AU', {
@@ -21,10 +22,16 @@ function formatAUD(amount: number) {
 function BankAvatar({
   name,
   logoUrl,
+  isCash,
 }: {
   name: string
   logoUrl: string | null
+  isCash: boolean
 }) {
+  if (isCash) {
+    return <CashAvatar size="lg" />
+  }
+
   if (logoUrl) {
     return (
       <Image
@@ -36,26 +43,16 @@ function BankAvatar({
       />
     )
   }
-  const colors: Record<string, string> = {
-    CBA: '#f5a623',
-    ANZ: '#007DBA',
-    NAB: '#CC0000',
-    WBC: '#D5002B',
-    AMEX: '#006FCF',
-  }
-  const key = Object.keys(colors).find(k => name.toUpperCase().includes(k))
-  const bg = key ? colors[key] : '#1a2d3d'
+
   const initials = name
     .split(' ')
     .map(w => w[0])
     .join('')
     .slice(0, 3)
     .toUpperCase()
+
   return (
-    <div
-      className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0"
-      style={{ background: bg }}
-    >
+    <div className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0 bg-[#1a2d3d]">
       {initials}
     </div>
   )
@@ -67,14 +64,20 @@ function AccountRow({ account }: { account: DashboardAccount }) {
 
   return (
     <div className="flex items-center gap-3 p-3.5 rounded-xl bg-[#ffffff04] border border-[#1a2d3d] mb-2 last:mb-0">
-      <BankAvatar name={account.bankName} logoUrl={account.logoUrl} />
+      <BankAvatar
+        name={account.bankName}
+        logoUrl={account.logoUrl}
+        isCash={account.isCash}
+      />
       <div className="flex-1 min-w-0">
         <p className="text-sm font-medium text-white truncate">
           {account.accountName}
         </p>
-        <p className="text-xs text-[#8b949e]">
-          {account.last4 ? `••• ${account.last4}` : account.bankName}
-        </p>
+        {!account.isCash && (
+          <p className="text-xs text-[#8b949e]">
+            {account.last4 ? `••• ${account.last4}` : account.bankName}
+          </p>
+        )}
       </div>
       <div className="text-right shrink-0">
         <p

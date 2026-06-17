@@ -25,7 +25,7 @@ export class CreateManualTransactionDto {
 
   @IsOptional()
   @IsString()
-  category?: string
+  categoryId?: string
 
   @IsOptional()
   @IsString()

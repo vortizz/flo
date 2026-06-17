@@ -3,14 +3,18 @@ export interface Transaction {
   merchant: string
   description: string | null
   category: string | null
+  categoryId: string | null
+  categoryColor: string | null
+  categoryIcon: string | null
   date: string
   amount: number
   type: 'DEBIT' | 'CREDIT'
   account: string
   accountId: string
-  isManual: boolean
+  isCash: boolean
   logoUrl: string | null
   last4: string | null
+  source: 'BASIQ' | 'MANUAL'
 }
 
 export interface TransactionsPagination {
@@ -31,7 +35,7 @@ export interface TransactionsParams {
   search?: string
   type?: 'DEBIT' | 'CREDIT'
   accountId?: string
-  category?: string
+  categoryId?: string
   from?: string
   to?: string
 }
@@ -45,14 +49,19 @@ export interface FilterOptions {
     logoUrl: string | null
     isCash: boolean
   }[]
-  categories: string[]
+  categories: {
+    id: string
+    name: string
+    color: string
+    icon: string
+  }[]
 }
 
 export interface ManualTransactionData {
   type: 'DEBIT' | 'CREDIT'
   amount: number
   merchant: string
-  category?: string
+  categoryId?: string
   description?: string
   date: string
 }
@@ -68,7 +77,7 @@ export async function fetchTransactions(
   if (params.search) query.set('search', params.search)
   if (params.type) query.set('type', params.type)
   if (params.accountId) query.set('accountId', params.accountId)
-  if (params.category) query.set('category', params.category)
+  if (params.categoryId) query.set('categoryId', params.categoryId)
   if (params.from) query.set('from', params.from)
   if (params.to) query.set('to', params.to)
 

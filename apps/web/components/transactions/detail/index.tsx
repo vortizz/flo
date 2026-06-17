@@ -10,6 +10,7 @@ import {
   updateManualTransaction,
   type ManualTransactionData,
 } from '@/lib/api/transactions'
+import { type CategoriesResponse } from '@/lib/api/categories'
 import ViewMode from './ViewMode'
 import EditMode from './EditMode'
 import DeleteConfirm from './DeleteConfirm'
@@ -33,12 +34,25 @@ export default function TransactionDetailPanel({
     await updateManualTransaction(localTx.id, data, getToken)
     queryClient.invalidateQueries({ queryKey: ['transactions'] })
     queryClient.invalidateQueries({ queryKey: ['accounts'] })
+
+    const categoriesData = queryClient.getQueryData<CategoriesResponse>([
+      'categories',
+    ])
+    const allCategories = [
+      ...(categoriesData?.expense ?? []),
+      ...(categoriesData?.income ?? []),
+    ]
+    const matched = allCategories.find(c => c.id === data.categoryId)
+
     setLocalTx(prev => ({
       ...prev,
       type: data.type,
       amount: data.amount,
       merchant: data.merchant,
-      category: data.category ?? prev.category,
+      category: matched?.name ?? prev.category,
+      categoryId: data.categoryId ?? prev.categoryId,
+      categoryColor: matched?.color ?? prev.categoryColor,
+      categoryIcon: matched?.icon ?? prev.categoryIcon,
       description: data.description ?? '',
       date: data.date,
     }))

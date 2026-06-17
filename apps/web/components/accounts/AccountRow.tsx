@@ -9,6 +9,7 @@ import AccountActionsMenu from './AccountActionsMenu'
 import DisconnectModal from './DisconnectModal'
 import { Toast } from '@/components/ui/Toast'
 import Image from 'next/image'
+import CashAvatar from '../ui/CashAvatar'
 
 function formatAUD(amount: number) {
   return new Intl.NumberFormat('en-AU', {
@@ -37,11 +38,7 @@ function BankAvatar({
   isCash: boolean
 }) {
   if (isCash) {
-    return (
-      <div className="w-9 h-9 rounded-full flex items-center justify-center shrink-0 bg-[#00C896]/10 border border-[#00C896]/20">
-        <HandCoins size={16} className="text-[#00C896]" />
-      </div>
-    )
+    return <CashAvatar size="lg" />
   }
 
   if (logoUrl) {

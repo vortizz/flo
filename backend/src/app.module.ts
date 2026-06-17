@@ -12,6 +12,7 @@ import appConfig from './config/app.config'
 import { DashboardModule } from './modules/dashboard/dashboard.module'
 import { TransactionsModule } from './modules/transactions/transactions.module'
 import { AccountsModule } from './modules/accounts/accounts.module'
+import { CategoriesModule } from './modules/categories/categories.module'
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { AccountsModule } from './modules/accounts/accounts.module'
     DashboardModule,
     TransactionsModule,
     AccountsModule,
+    CategoriesModule,
   ],
   controllers: [AppController],
   providers: [

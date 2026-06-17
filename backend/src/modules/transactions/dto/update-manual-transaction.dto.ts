@@ -19,7 +19,7 @@ export class UpdateManualTransactionDto {
 
   @IsOptional()
   @IsString()
-  category?: string
+  categoryId?: string
 
   @IsOptional()
   @IsString()
