@@ -1,91 +1,18 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useState } from 'react'
 import Image from 'next/image'
-import { X, Loader2, HandCoins, Check, ChevronDown } from 'lucide-react'
+import { X, Loader2, Check } from 'lucide-react'
+import { useQuery } from '@tanstack/react-query'
+import { useAuth } from '@clerk/nextjs'
 import {
   type Transaction,
   type ManualTransactionData,
 } from '@/lib/api/transactions'
+import { fetchCategories } from '@/lib/api/categories'
 import SingleDatePicker from '../../ui/SingleDatePicker'
-import { EXPENSE_CATEGORIES, INCOME_CATEGORIES } from './utils'
-
-function CategorySelect({
-  categories,
-  value,
-  onChange,
-}: {
-  categories: typeof EXPENSE_CATEGORIES
-  value: string
-  onChange: (v: string) => void
-}) {
-  const [open, setOpen] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
-  const selected = categories.find(c => c.label === value)
-
-  useEffect(() => {
-    function handler(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
-    }
-    document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
-  }, [])
-
-  return (
-    <div ref={ref} className="relative w-full">
-      <button
-        onClick={() => setOpen(!open)}
-        className={`w-full flex items-center justify-between px-3 py-2 rounded-lg border text-sm text-left outline-none transition-colors bg-[#07111c] ${
-          open ? 'border-[#00C896]/60' : 'border-[#1a2d3d]'
-        } ${value ? 'text-white' : 'text-[#4a6070]'}`}
-      >
-        <span className="flex items-center gap-2">
-          {selected && (
-            <span
-              className={`w-2 h-2 rounded-full shrink-0 ${selected.color}`}
-            />
-          )}
-          {value || 'Select a category'}
-        </span>
-        <ChevronDown
-          size={13}
-          className={`text-[#8b949e] transition-transform duration-200 ${open ? 'rotate-180' : ''}`}
-        />
-      </button>
-
-      {open && (
-        <div className="absolute z-50 left-0 right-0 bottom-full mb-1.5 rounded-xl border border-[#1a2d3d] py-1 shadow-2xl overflow-hidden bg-[#0d1f2d]">
-          <div className="max-h-44 overflow-y-auto scrollbar-thin scrollbar-track-transparent scrollbar-thumb-[#1a2d3d]">
-            {categories.map(cat => (
-              <button
-                key={cat.label}
-                onClick={() => {
-                  onChange(cat.label)
-                  setOpen(false)
-                }}
-                className={`w-full flex items-center justify-between px-4 py-2.5 text-sm text-left transition-colors ${
-                  value === cat.label
-                    ? 'text-white bg-[#00C896]/5'
-                    : 'text-[#8b949e] hover:bg-white/3 hover:text-white'
-                }`}
-              >
-                <span className="flex items-center gap-2.5">
-                  <span
-                    className={`w-2 h-2 rounded-full shrink-0 ${cat.color}`}
-                  />
-                  {cat.label}
-                </span>
-                {value === cat.label && (
-                  <Check size={13} className="text-[#00C896]" />
-                )}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  )
-}
+import CategorySelect from '@/components/ui/CategorySelect'
+import CashAvatar from '@/components/ui/CashAvatar'
 
 export default function EditMode({
   tx,
@@ -96,6 +23,13 @@ export default function EditMode({
   onSave: (data: ManualTransactionData) => Promise<void>
   onCancel: () => void
 }) {
+  const { getToken } = useAuth()
+  const { data: categoriesData } = useQuery({
+    queryKey: ['categories'],
+    queryFn: () => fetchCategories(getToken),
+    staleTime: Infinity,
+  })
+
   const [isSaving, setIsSaving] = useState(false)
   const [submitted, setSubmitted] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -107,12 +41,22 @@ export default function EditMode({
     String(Math.round(tx.amount * 100)),
   )
   const [merchant, setMerchant] = useState(tx.merchant)
-  const [category, setCategory] = useState(tx.category ?? '')
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(
+    null,
+  )
   const [description, setDescription] = useState(tx.description ?? '')
   const [date, setDate] = useState(tx.date.slice(0, 10))
 
   const isExpense = type === 'expense'
-  const categories = isExpense ? EXPENSE_CATEGORIES : INCOME_CATEGORIES
+
+  const categories = isExpense
+    ? (categoriesData?.expense ?? [])
+    : (categoriesData?.income ?? [])
+
+  const resolvedDefault = tx.categoryId ?? ''
+
+  const categoryId =
+    selectedCategoryId !== null ? selectedCategoryId : resolvedDefault
 
   const displayAmount = (() => {
     if (!rawAmount) return ''
@@ -124,7 +68,7 @@ export default function EditMode({
 
   const parsedAmount = rawAmount ? parseInt(rawAmount, 10) / 100 : 0
   const amountValid = parsedAmount > 0 && parsedAmount <= 99999
-  const formValid = amountValid && merchant.trim() && category
+  const formValid = amountValid && merchant.trim() && categoryId
 
   function handleAmountKey(e: React.KeyboardEvent<HTMLInputElement>) {
     if (
@@ -142,7 +86,7 @@ export default function EditMode({
 
   function handleTypeChange(t: 'expense' | 'income') {
     setType(t)
-    setCategory('')
+    setSelectedCategoryId('')
   }
 
   async function handleSave() {
@@ -154,7 +98,7 @@ export default function EditMode({
         type: type === 'expense' ? 'DEBIT' : 'CREDIT',
         amount: parsedAmount,
         merchant: merchant.trim(),
-        category: category || undefined,
+        categoryId: categoryId || undefined,
         description: description.trim() || undefined,
         date,
       })
@@ -248,7 +192,7 @@ export default function EditMode({
             <div className="text-xs font-medium text-[#8b949e] tracking-wide mb-1.5">
               Date
             </div>
-            <SingleDatePicker value={date} onChange={setDate} />
+            <SingleDatePicker value={date} onChange={setDate} size="sm" />
           </div>
 
           <div>
@@ -257,8 +201,9 @@ export default function EditMode({
             </div>
             <CategorySelect
               categories={categories}
-              value={category}
-              onChange={setCategory}
+              value={categoryId}
+              onChange={setSelectedCategoryId}
+              size="sm"
             />
           </div>
 
@@ -276,10 +221,8 @@ export default function EditMode({
                     height={32}
                     className="rounded-full"
                   />
-                ) : tx.isManual ? (
-                  <div className="w-8 h-8 rounded-full bg-[#1a2d3d] flex items-center justify-center text-[#00C896]">
-                    <HandCoins size={16} />
-                  </div>
+                ) : tx.isCash ? (
+                  <CashAvatar size="md" />
                 ) : (
                   <div className="w-8 h-8 rounded-full bg-[#1a2d3d] flex items-center justify-center">
                     <span className="text-xs font-bold text-[#8b949e]">

@@ -23,7 +23,7 @@ export class TransactionsService {
       where: { clerkId },
     })
 
-    const { page, limit, search, type, accountId, category, from, to } = dto
+    const { page, limit, search, type, accountId, categoryId, from, to } = dto
     const skip = (page - 1) * limit
 
     const where: any = {
@@ -39,7 +39,7 @@ export class TransactionsService {
 
     if (type) where.type = type
     if (accountId) where.accountId = accountId
-    if (category) where.category = category
+    if (categoryId) where.categoryId = categoryId
 
     if (from || to) {
       where.date = {}
@@ -58,7 +58,14 @@ export class TransactionsService {
           amount: true,
           type: true,
           merchant: true,
-          category: true,
+          categoryId: true,
+          category: {
+            select: {
+              name: true,
+              color: true,
+              icon: true,
+            },
+          },
           description: true,
           date: true,
           source: true,
@@ -84,12 +91,15 @@ export class TransactionsService {
         id: t.id,
         merchant: t.merchant,
         description: t.description,
-        category: t.category,
+        category: t.category?.name ?? null,
+        categoryId: t.categoryId ?? null,
+        categoryColor: t.category?.color ?? null,
+        categoryIcon: t.category?.icon ?? null,
         date: t.date,
         amount: Number(t.amount),
         type: t.type,
         source: t.source,
-        isManual: t.account.isCash,
+        isCash: t.account.isCash,
         account: t.account.accountName,
         accountId: t.account.id,
         logoUrl: t.account.institution?.logoUrl ?? null,
@@ -123,13 +133,17 @@ export class TransactionsService {
           },
         },
       }),
-      this.prisma.transaction.findMany({
-        where: { account: { userId: user.id }, category: { not: null } },
-        select: { category: true },
-        distinct: ['category'],
-        orderBy: { category: 'asc' },
+      this.prisma.category.findMany({
+        orderBy: { name: 'asc' },
+        select: { id: true, name: true, color: true, icon: true, type: true },
+        distinct: ['name', 'type'],
       }),
     ])
+
+    const nameCounts = categories.reduce<Record<string, number>>((acc, c) => {
+      acc[c.name] = (acc[c.name] ?? 0) + 1
+      return acc
+    }, {})
 
     return {
       accounts: accounts.map(a => ({
@@ -140,7 +154,15 @@ export class TransactionsService {
         isCash: a.isCash,
         logoUrl: (a.institution as Institution)?.logoUrl ?? null,
       })),
-      categories: categories.map(t => t.category!).filter(c => c !== 'Unknown'),
+      categories: categories.map(c => ({
+        id: c.id,
+        name:
+          nameCounts[c.name] > 1
+            ? `${c.name} (${c.type === 'DEBIT' ? 'Expense' : 'Income'})`
+            : c.name,
+        color: c.color,
+        icon: c.icon,
+      })),
     }
   }
 
@@ -164,7 +186,7 @@ export class TransactionsService {
         amount: dto.amount,
         type: dto.type,
         merchant: dto.merchant,
-        category: dto.category ?? null,
+        categoryId: dto.categoryId ?? null,
         description: dto.description ?? null,
         date: new Date(dto.date),
         source: SourceType.MANUAL,
@@ -202,7 +224,7 @@ export class TransactionsService {
         ...(dto.type && { type: dto.type }),
         ...(dto.amount && { amount: dto.amount }),
         ...(dto.merchant && { merchant: dto.merchant }),
-        ...(dto.category !== undefined && { category: dto.category }),
+        ...(dto.categoryId !== undefined && { categoryId: dto.categoryId }),
         ...(dto.description !== undefined && { description: dto.description }),
         ...(dto.date && { date: new Date(dto.date) }),
       },

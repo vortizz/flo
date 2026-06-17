@@ -28,7 +28,7 @@ export class GetTransactionsDto {
 
   @IsOptional()
   @IsString()
-  category?: string
+  categoryId?: string
 
   @IsOptional()
   @IsString()

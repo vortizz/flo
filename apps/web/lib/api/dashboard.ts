@@ -27,16 +27,20 @@ export interface CategoryDataPoint {
   category: string
   amount: number
   percentage: number
+  color: string
 }
 
 export interface RecentTransaction {
   id: string
   merchant: string
   category: string | null
+  categoryColor: string | null
+  categoryIcon: string | null
   date: string
   amount: number
   type: 'DEBIT' | 'CREDIT'
   account: string
+  isCash: boolean
 }
 
 export interface DashboardAccount {
@@ -47,6 +51,7 @@ export interface DashboardAccount {
   balance: number
   logoUrl: string | null
   dailyChange: number
+  isCash: boolean
 }
 
 export interface DashboardAccountsResponse {

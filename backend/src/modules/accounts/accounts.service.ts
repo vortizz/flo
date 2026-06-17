@@ -116,8 +116,10 @@ export class AccountsService {
       t => t.account === account.basiqId,
     )
 
+    const categoryMap = await this.basiqService.loadCategoryMap()
+
     const normalisedTxs = accountTransactions.map(tx =>
-      this.basiqService.normaliseTransaction(tx, account.id),
+      this.basiqService.normaliseTransaction(tx, account.id, categoryMap),
     )
 
     const result = await this.prisma.transaction.createMany({
@@ -127,7 +129,7 @@ export class AccountsService {
         amount: t.amount,
         type: t.type,
         merchant: t.merchant,
-        category: t.category,
+        categoryId: t.categoryId,
         description: t.description,
         date: t.date,
         raw: t.raw,

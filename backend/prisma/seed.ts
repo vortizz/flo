@@ -3,6 +3,7 @@ import { PrismaClient } from '@prisma/client'
 import { PrismaPg } from '@prisma/adapter-pg'
 import pg from 'pg'
 import axios from 'axios'
+import { CATEGORIES, CATEGORY_MAPPINGS } from './seed-data'
 
 const { Pool } = pg
 const pool = new Pool({ connectionString: process.env.DIRECT_URL })
@@ -26,6 +27,48 @@ async function getBasiqToken() {
 }
 
 async function main() {
+  // ─── Categories ───────────────────────────────────────────────────────────
+  console.log('Seeding categories...')
+
+  for (const category of CATEGORIES) {
+    await prisma.category.upsert({
+      where: { name_type: { name: category.name, type: category.type } },
+      update: { color: category.color, icon: category.icon },
+      create: category,
+    })
+  }
+
+  console.log('✅ Categories seeded successfully')
+
+  // ─── Category Mappings ────────────────────────────────────────────────────
+  console.log('Seeding category mappings...')
+
+  for (const mapping of CATEGORY_MAPPINGS) {
+    const category = await prisma.category.findUnique({
+      where: { name_type: { name: mapping.categoryName, type: mapping.type } },
+    })
+
+    if (!category) {
+      console.warn(
+        `Category not found: ${mapping.categoryName} (${mapping.type})`,
+      )
+      continue
+    }
+
+    const existing = await prisma.categoryMapping.findFirst({
+      where: { basiqLabel: mapping.basiqLabel, categoryId: category.id },
+    })
+
+    if (!existing) {
+      await prisma.categoryMapping.create({
+        data: { basiqLabel: mapping.basiqLabel, categoryId: category.id },
+      })
+    }
+  }
+
+  console.log('✅ Category mappings seeded successfully')
+
+  // ─── Institutions ─────────────────────────────────────────────────────────
   console.log('Seeding institutions...')
 
   const token = await getBasiqToken()

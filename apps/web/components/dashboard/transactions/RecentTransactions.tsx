@@ -6,6 +6,8 @@ import Link from 'next/link'
 import { fetchRecentTransactions } from '@/lib/api/dashboard'
 import RecentTransactionsSkeleton from './RecentTransactionsSkeleton'
 import { PERIOD_MAP, useDashboard } from '../layout/DashboardContext'
+import { getCategoryIcon } from '@/components/ui/categoryIcon'
+import { createElement } from 'react'
 
 function formatAUD(amount: number) {
   return new Intl.NumberFormat('en-AU', {
@@ -15,24 +17,49 @@ function formatAUD(amount: number) {
   }).format(amount)
 }
 
-function formatDate(dateStr: string) {
+function formatDate(dateStr: string, isCash: boolean) {
   const date = new Date(dateStr)
   const now = new Date()
   const diff = now.getTime() - date.getTime()
   const days = Math.floor(diff / (1000 * 60 * 60 * 24))
 
   if (days <= 0) {
+    if (isCash) return 'Today'
     return `Today, ${date.toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit', hour12: true })}`
   }
   if (days === 1) return 'Yesterday'
   return date.toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })
 }
 
-function MerchantIcon({ merchant }: { merchant: string }) {
-  const initial = merchant?.charAt(0).toUpperCase() ?? '?'
+function CategoryAvatar({
+  categoryIcon,
+  categoryColor,
+  merchant,
+}: {
+  categoryIcon: string | null
+  categoryColor: string | null
+  merchant: string
+}) {
+  const Icon = getCategoryIcon(categoryIcon)
+
   return (
-    <div className="w-9 h-9 rounded-full bg-[#1a2d3d] flex items-center justify-center shrink-0">
-      <span className="text-xs font-semibold text-[#8b949e]">{initial}</span>
+    <div
+      className="w-9 h-9 rounded-full flex items-center justify-center shrink-0"
+      style={{
+        backgroundColor:
+          Icon && categoryColor ? `${categoryColor}20` : '#1a2d3d',
+      }}
+    >
+      {Icon ? (
+        createElement(Icon, {
+          size: 16,
+          style: { color: categoryColor ?? '#8b949e' },
+        })
+      ) : (
+        <span className="text-xs font-semibold text-[#8b949e]">
+          {merchant?.charAt(0).toUpperCase() ?? '?'}
+        </span>
+      )}
     </div>
   )
 }
@@ -92,14 +119,19 @@ export default function RecentTransactions() {
       <div className="flex flex-col gap-3">
         {data.map(tx => (
           <div key={tx.id} className="flex items-center gap-3">
-            <MerchantIcon merchant={tx.merchant} />
+            <CategoryAvatar
+              categoryIcon={tx.categoryIcon}
+              categoryColor={tx.categoryColor}
+              merchant={tx.merchant}
+            />
 
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-white truncate">
                 {tx.merchant}
               </p>
               <p className="text-xs text-[#8b949e] truncate">
-                {tx.category ?? 'Uncategorised'} · {formatDate(tx.date)}
+                {tx.category ?? 'Uncategorised'} ·{' '}
+                {formatDate(tx.date, tx.isCash)}
               </p>
             </div>
 

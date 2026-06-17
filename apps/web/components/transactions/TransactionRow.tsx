@@ -1,4 +1,6 @@
 import { type Transaction } from '@/lib/api/transactions'
+import { createElement } from 'react'
+import { getCategoryIcon } from '../ui/categoryIcon'
 
 function formatAUD(amount: number) {
   return new Intl.NumberFormat('en-AU', {
@@ -8,8 +10,8 @@ function formatAUD(amount: number) {
   }).format(amount)
 }
 
-function formatTime(dateStr: string, isManual: boolean) {
-  if (isManual) return ''
+function formatTime(dateStr: string, isCash: boolean) {
+  if (isCash) return ''
   return new Date(dateStr).toLocaleTimeString('en-AU', {
     hour: 'numeric',
     minute: '2-digit',
@@ -17,20 +19,53 @@ function formatTime(dateStr: string, isManual: boolean) {
   })
 }
 
-function MerchantIcon({ merchant }: { merchant: string }) {
+function MerchantIcon({
+  merchant,
+  categoryIcon,
+  categoryColor,
+}: {
+  merchant: string
+  categoryIcon: string | null
+  categoryColor: string | null
+}) {
+  const Icon = getCategoryIcon(categoryIcon)
+
   return (
-    <div className="w-8 h-8 rounded-full bg-[#1a2d3d] flex items-center justify-center flex-shrink-0">
-      <span className="text-xs font-semibold text-[#8b949e]">
-        {merchant?.charAt(0).toUpperCase() ?? '?'}
-      </span>
+    <div
+      className="w-8 h-8 rounded-full flex items-center justify-center shrink-0"
+      style={{
+        backgroundColor:
+          Icon && categoryColor ? `${categoryColor}20` : '#1a2d3d',
+      }}
+    >
+      {Icon ? (
+        createElement(Icon, {
+          size: 14,
+          style: { color: categoryColor ?? '#8b949e' },
+        })
+      ) : (
+        <span className="text-xs font-semibold text-[#8b949e]">
+          {merchant?.charAt(0).toUpperCase() ?? '?'}
+        </span>
+      )}
     </div>
   )
 }
 
-function CategoryPill({ category }: { category: string | null }) {
+function CategoryPill({
+  category,
+  color,
+}: {
+  category: string | null
+  color: string | null
+}) {
   if (!category) return <span className="text-xs text-[#8b949e]">—</span>
   return (
     <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs bg-[#1e293b] text-[#cbd5e1] border border-white/5">
+      <span
+        className="w-1.5 h-1.5 rounded-full shrink-0"
+        style={{ backgroundColor: color ?? '#8b949e' }}
+      />
       {category}
     </span>
   )
@@ -56,20 +91,34 @@ export default function TransactionRow({
             : 'hover:bg-[#ffffff04]'
         }`}
       >
-        <MerchantIcon merchant={tx.merchant} />
+        <MerchantIcon
+          merchant={tx.merchant}
+          categoryIcon={tx.categoryIcon}
+          categoryColor={tx.categoryColor}
+        />
         <div className="flex flex-1 min-w-0 justify-between gap-2 items-center">
           <div className="flex flex-col min-w-0">
             <div className="flex items-center gap-2">
               <span className="text-sm text-white font-medium">
                 {tx.merchant}
               </span>
-              {tx.isManual && (
+              {tx.isCash && (
                 <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-[#00C896]/10 text-[#00C896] border border-[#00C896]/20">
                   Cash
                 </span>
               )}
             </div>
-            <div className="mt-1 text-xs text-[#8b949e]">{tx.category}</div>
+            <div className="mt-1 flex items-center gap-1.5">
+              {tx.categoryColor && (
+                <span
+                  className="w-1.5 h-1.5 rounded-full shrink-0"
+                  style={{ backgroundColor: tx.categoryColor }}
+                />
+              )}
+              <span className="text-xs text-[#8b949e]">
+                {tx.category ?? '—'}
+              </span>
+            </div>
           </div>
           <div className="flex flex-col items-end shrink-0">
             <span
@@ -79,7 +128,7 @@ export default function TransactionRow({
               {formatAUD(tx.amount)}
             </span>
             <span className="text-xs text-[#8b949e] mt-1">
-              {formatTime(tx.date, tx.isManual)}
+              {formatTime(tx.date, tx.isCash)}
             </span>
           </div>
         </div>
@@ -97,13 +146,17 @@ export default function TransactionRow({
         {/* Date */}
         <div className="flex flex-col gap-1">
           <span className="text-xs text-[#8b949e]">
-            {formatTime(tx.date, tx.isManual)}
+            {formatTime(tx.date, tx.isCash)}
           </span>
         </div>
 
         {/* Merchant */}
         <div className="flex items-center gap-3 min-w-0">
-          <MerchantIcon merchant={tx.merchant} />
+          <MerchantIcon
+            merchant={tx.merchant}
+            categoryIcon={tx.categoryIcon}
+            categoryColor={tx.categoryColor}
+          />
           <span className="text-sm text-white font-medium text-wrap">
             {tx.merchant}
           </span>
@@ -111,7 +164,7 @@ export default function TransactionRow({
 
         {/* Category */}
         <div>
-          <CategoryPill category={tx.category} />
+          <CategoryPill category={tx.category} color={tx.categoryColor} />
         </div>
 
         {/* Account */}

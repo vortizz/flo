@@ -1,14 +1,40 @@
 import Image from 'next/image'
-import { X, Trash2, Pencil, HandCoins } from 'lucide-react'
+import { X, Trash2, Pencil } from 'lucide-react'
+import { createElement } from 'react'
 import { type Transaction } from '@/lib/api/transactions'
 import { formatAUD, formatDate } from './utils'
+import { getCategoryIcon } from '@/components/ui/categoryIcon'
+import CashAvatar from '@/components/ui/CashAvatar'
 
-function MerchantAvatar({ merchant }: { merchant: string }) {
+function MerchantAvatar({
+  merchant,
+  categoryIcon,
+  categoryColor,
+}: {
+  merchant: string
+  categoryIcon: string | null
+  categoryColor: string | null
+}) {
+  const Icon = getCategoryIcon(categoryIcon)
+
   return (
-    <div className="w-16 h-16 rounded-2xl bg-[#1a2d3d] flex items-center justify-center mx-auto mb-4">
-      <span className="text-2xl font-bold text-[#8b949e]">
-        {merchant?.charAt(0).toUpperCase() ?? '?'}
-      </span>
+    <div
+      className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4"
+      style={{
+        backgroundColor:
+          Icon && categoryColor ? `${categoryColor}20` : '#1a2d3d',
+      }}
+    >
+      {Icon ? (
+        createElement(Icon, {
+          size: 28,
+          style: { color: categoryColor ?? '#8b949e' },
+        })
+      ) : (
+        <span className="text-2xl font-bold text-[#8b949e]">
+          {merchant?.charAt(0).toUpperCase() ?? '?'}
+        </span>
+      )}
     </div>
   )
 }
@@ -40,7 +66,11 @@ export default function ViewMode({
 
       <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-track-transparent scrollbar-thumb-[#1a2d3d]">
         <div className="p-6 pb-4">
-          <MerchantAvatar merchant={tx.merchant} />
+          <MerchantAvatar
+            merchant={tx.merchant}
+            categoryIcon={tx.categoryIcon}
+            categoryColor={tx.categoryColor}
+          />
           <div className="text-center">
             <p className="text-xl font-semibold text-white mb-1">
               {tx.merchant}
@@ -53,22 +83,27 @@ export default function ViewMode({
               <span className="text-lg font-normal text-[#64748b]">AUD</span>
             </p>
             <div className="text-sm text-[#8b949e]">
-              {formatDate(tx.date, tx.isManual)}
+              {formatDate(tx.date, tx.isCash)}
             </div>
           </div>
         </div>
 
         <div className="px-6 py-4 space-y-4">
+          {/* Category */}
           <div>
             <div className="text-xs font-medium text-[#8b949e] tracking-wide mb-1.5">
               Category
             </div>
             <div className="w-full p-3 rounded-xl border border-white/5 bg-[#1e293b4d] flex gap-3 items-center text-sm text-white">
-              <div className="w-2 h-2 rounded-full bg-[#3b82f6]" />
+              <span
+                className="w-2 h-2 rounded-full shrink-0"
+                style={{ backgroundColor: tx.categoryColor ?? '#8b949e' }}
+              />
               {tx.category ?? '—'}
             </div>
           </div>
 
+          {/* Account */}
           <div>
             <div className="text-xs font-medium text-[#8b949e] tracking-wide mb-1.5">
               Account
@@ -82,10 +117,8 @@ export default function ViewMode({
                   height={32}
                   className="rounded-full"
                 />
-              ) : tx.isManual ? (
-                <div className="w-8 h-8 rounded-full bg-[#1a2d3d] flex items-center justify-center text-[#00C896]">
-                  <HandCoins size={16} />
-                </div>
+              ) : tx.isCash ? (
+                <CashAvatar size="lg" />
               ) : (
                 <div className="w-8 h-8 rounded-full bg-[#1a2d3d] flex items-center justify-center">
                   <span className="text-xs font-bold text-[#8b949e]">
@@ -102,6 +135,7 @@ export default function ViewMode({
             </div>
           </div>
 
+          {/* Note */}
           <div>
             <div className="text-xs font-medium text-[#8b949e] tracking-wide mb-1.5">
               Note
@@ -119,7 +153,7 @@ export default function ViewMode({
         </div>
       </div>
 
-      {tx.isManual && (
+      {tx.isCash && (
         <div className="px-6 py-5 border-t border-[#1a2d3d] shrink-0">
           <div className="flex gap-3">
             <button

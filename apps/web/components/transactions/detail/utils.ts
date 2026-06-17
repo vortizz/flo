@@ -1,25 +1,3 @@
-export const EXPENSE_CATEGORIES = [
-  { label: 'Groceries', color: 'bg-[#00C896]' },
-  { label: 'Food & Dining', color: 'bg-orange-500' },
-  { label: 'Transport', color: 'bg-violet-400' },
-  { label: 'Housing', color: 'bg-cyan-500' },
-  { label: 'Shopping', color: 'bg-pink-500' },
-  { label: 'Entertainment', color: 'bg-violet-500' },
-  { label: 'Health', color: 'bg-lime-500' },
-  { label: 'Utilities', color: 'bg-amber-500' },
-  { label: 'Petrol', color: 'bg-orange-400' },
-  { label: 'Other', color: 'bg-slate-500' },
-]
-
-export const INCOME_CATEGORIES = [
-  { label: 'Salary', color: 'bg-[#00C896]' },
-  { label: 'Freelance', color: 'bg-blue-500' },
-  { label: 'Interest', color: 'bg-violet-400' },
-  { label: 'Refund', color: 'bg-cyan-500' },
-  { label: 'Gift', color: 'bg-pink-500' },
-  { label: 'Other', color: 'bg-slate-500' },
-]
-
 export type Mode = 'view' | 'edit' | 'delete'
 
 export function formatAUD(amount: number) {
@@ -30,7 +8,7 @@ export function formatAUD(amount: number) {
   }).format(amount)
 }
 
-export function formatDate(dateStr: string, isManual: boolean) {
+export function formatDate(dateStr: string, isCash: boolean) {
   const date = new Date(dateStr)
   const now = new Date()
   const todayStr = now.toLocaleDateString('en-AU')
@@ -52,7 +30,7 @@ export function formatDate(dateStr: string, isManual: boolean) {
     year: 'numeric',
   })
 
-  if (isManual) {
+  if (isCash) {
     if (dateLocalStr === todayStr) return 'Today'
     if (dateLocalStr === yesterdayStr) return 'Yesterday'
     return fullDate

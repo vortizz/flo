@@ -10,20 +10,11 @@ import {
 import { fetchCategories } from '@/lib/api/dashboard'
 import CategoryChartSkeleton from './CategoryChartSkeleton'
 
-const COLORS = [
-  '#00C896',
-  '#3b82f6',
-  '#a855f7',
-  '#f97316',
-  '#ec4899',
-  '#8b949e',
-]
-
 function formatAUD(amount: number) {
   return new Intl.NumberFormat('en-AU', {
     style: 'currency',
     currency: 'AUD',
-    minimumFractionDigits: 0,
+    minimumFractionDigits: 2,
   }).format(amount)
 }
 
@@ -93,8 +84,8 @@ export default function CategoryChart() {
                 paddingAngle={3}
                 strokeWidth={0}
               >
-                {data.map((_, index) => (
-                  <Cell key={index} fill={COLORS[index % COLORS.length]} />
+                {data.map((item, index) => (
+                  <Cell key={index} fill={item.color} />
                 ))}
               </Pie>
 
@@ -125,7 +116,7 @@ export default function CategoryChart() {
               <div className="flex items-center gap-2.5 min-w-0 flex-1">
                 <span
                   className="flex-none w-2 h-2 rounded-full"
-                  style={{ background: COLORS[index % COLORS.length] }}
+                  style={{ background: item.color }}
                 />
                 <span
                   className="text-xs text-[#8b949e] truncate"
@@ -139,7 +130,7 @@ export default function CategoryChart() {
                   <div
                     className="h-full rounded-full"
                     style={{
-                      background: COLORS[index % COLORS.length],
+                      background: item.color,
                       width: `${item.percentage}%`,
                     }}
                   />

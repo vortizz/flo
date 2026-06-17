@@ -14,7 +14,7 @@ import {
 import type { FastifyRequest } from 'fastify'
 import { BasiqService } from './basiq.service'
 import { PrismaService } from '../../prisma.service'
-import { SourceType } from '@prisma/client'
+import { AccountStatus, SourceType } from '@prisma/client'
 import type { ClerkUser } from 'src/common/types'
 import { User } from 'src/common/decorators/user.decorator'
 import { Public } from '../auth/auth.decorator'
@@ -147,7 +147,7 @@ export class BasiqController {
           last4,
           institutionId: institution?.id ?? null,
           lastSyncedAt: new Date(),
-          status: 'CONNECTED',
+          status: AccountStatus.CONNECTED,
         },
         create: {
           userId: user.id,
@@ -159,7 +159,7 @@ export class BasiqController {
           basiqConnectionId: account.connection ?? null,
           last4,
           lastSyncedAt: new Date(),
-          status: 'CONNECTED',
+          status: AccountStatus.CONNECTED,
         },
       })
       savedAccounts.push({ id: saved.id, basiqId: account.id })
@@ -168,6 +168,7 @@ export class BasiqController {
     const transactions = await this.basiqService.getTransactions(
       user.basiqUserId,
     )
+    const categoryMap = await this.basiqService.loadCategoryMap()
 
     let synced = 0
     for (const tx of transactions) {
@@ -177,13 +178,14 @@ export class BasiqController {
       const normalised = this.basiqService.normaliseTransaction(
         tx,
         floAccount.id,
+        categoryMap,
       )
 
       await this.prisma.transaction.upsert({
         where: { basiqId: tx.id },
         update: {
           merchant: normalised.merchant,
-          category: normalised.category,
+          categoryId: normalised.categoryId,
           description: normalised.description,
           raw: normalised.raw,
         },
@@ -193,7 +195,7 @@ export class BasiqController {
           amount: normalised.amount,
           type: normalised.type,
           merchant: normalised.merchant,
-          category: normalised.category,
+          categoryId: normalised.categoryId,
           description: normalised.description,
           date: normalised.date,
           raw: normalised.raw,

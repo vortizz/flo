@@ -244,14 +244,18 @@ export class BasiqService implements OnModuleInit {
     }
   }
 
-  normaliseTransaction(tx: any, accountId: string) {
+  normaliseTransaction(
+    tx: any,
+    accountId: string,
+    categoryMap: Map<string, string>,
+  ) {
     const merchant =
       tx.enrich?.merchant?.businessName ||
       tx.enrich?.cleanDescription ||
       tx.description ||
       'Unknown'
 
-    const category =
+    const basiqLabel =
       tx.enrich?.category?.anzsic?.class?.title || tx.subClass?.title || null
 
     const date = tx.transactionDate
@@ -263,13 +267,22 @@ export class BasiqService implements OnModuleInit {
 
     const amount = Math.abs(parseFloat(tx.amount))
 
+    const categoryId = (() => {
+      if (!basiqLabel) return categoryMap.get(`Other:${type}`) ?? null
+      return (
+        categoryMap.get(`${basiqLabel}:${type}`) ??
+        categoryMap.get(`Other:${type}`) ??
+        null
+      )
+    })()
+
     return {
       basiqId: tx.id,
       accountId,
       amount,
       type,
       merchant,
-      category,
+      categoryId,
       description: tx.description || null,
       date,
       raw: tx,
@@ -344,6 +357,15 @@ export class BasiqService implements OnModuleInit {
 
     this.logger.log(
       `consent.revoked: marked ${updated.count} accounts as DISCONNECTED for user ${user.id}`,
+    )
+  }
+
+  async loadCategoryMap(): Promise<Map<string, string>> {
+    const mappings = await this.prismaService.categoryMapping.findMany({
+      include: { category: true },
+    })
+    return new Map(
+      mappings.map(m => [`${m.basiqLabel}:${m.category.type}`, m.categoryId]),
     )
   }
 }

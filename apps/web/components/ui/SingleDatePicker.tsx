@@ -27,13 +27,15 @@ function toISO(d: Date) {
 }
 
 interface SingleDatePickerProps {
-  value: string // ISO date string YYYY-MM-DD
+  value: string
   onChange: (date: string) => void
+  size?: 'sm' | 'md'
 }
 
 export default function SingleDatePicker({
   value,
   onChange,
+  size = 'md',
 }: SingleDatePickerProps) {
   const ref = useRef<HTMLDivElement>(null)
   const [open, setOpen] = useState(false)
@@ -106,12 +108,13 @@ export default function SingleDatePicker({
 
   return (
     <div className="relative" ref={ref}>
-      {/* Trigger */}
       <button
         onClick={() => setOpen(v => !v)}
-        className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border text-sm text-left outline-none transition-colors bg-[#07111c] ${
-          open ? 'border-[#00C896]' : 'border-[#1a2d3d]'
-        } ${selected ? 'text-white' : 'text-[#4a6070]'}`}
+        className={`w-full flex items-center justify-between rounded-xl border text-sm text-left outline-none transition-colors bg-[#07111c] ${
+          size === 'md' ? 'px-4 py-3' : 'px-3 py-2'
+        } ${open ? 'border-[#00C896]' : 'border-[#1a2d3d]'} ${
+          selected ? 'text-white' : 'text-[#4a6070]'
+        }`}
       >
         {displayValue}
         <ChevronLeft
@@ -120,11 +123,9 @@ export default function SingleDatePicker({
         />
       </button>
 
-      {/* Dropdown */}
       {open && (
         <div className="absolute z-50 left-0 right-0 bottom-full mb-1.5 rounded-xl border border-[#1a2d3d] shadow-2xl overflow-hidden bg-[#0d1f2d]">
           <div className="p-3 flex flex-col gap-2">
-            {/* Month navigation */}
             <div className="flex items-center justify-between">
               <button
                 onClick={prevMonth}
@@ -143,7 +144,6 @@ export default function SingleDatePicker({
               </button>
             </div>
 
-            {/* Weekdays */}
             <div className="grid grid-cols-7">
               {WEEKDAYS.map(d => (
                 <div
@@ -155,7 +155,6 @@ export default function SingleDatePicker({
               ))}
             </div>
 
-            {/* Days */}
             <div className="grid grid-cols-7 gap-0.5">
               {Array.from({ length: firstDay }).map((_, i) => (
                 <div key={`e-${i}`} />

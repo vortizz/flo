@@ -1,116 +1,21 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
-import { X, ChevronDown, Check, Loader2, HandCoins } from 'lucide-react'
+import { useState } from 'react'
+import { X, Check, Loader2 } from 'lucide-react'
 import { useAuth } from '@clerk/nextjs'
 import {
   createManualTransaction,
   type ManualTransactionData,
 } from '@/lib/api/transactions'
+import { fetchCategories } from '@/lib/api/categories'
 import SingleDatePicker from '../ui/SingleDatePicker'
-
-const EXPENSE_CATEGORIES = [
-  { label: 'Groceries', color: 'bg-[#00C896]' },
-  { label: 'Food & Dining', color: 'bg-orange-500' },
-  { label: 'Transport', color: 'bg-violet-400' },
-  { label: 'Housing', color: 'bg-cyan-500' },
-  { label: 'Shopping', color: 'bg-pink-500' },
-  { label: 'Entertainment', color: 'bg-violet-500' },
-  { label: 'Health', color: 'bg-lime-500' },
-  { label: 'Utilities', color: 'bg-amber-500' },
-  { label: 'Petrol', color: 'bg-orange-400' },
-  { label: 'Other', color: 'bg-slate-500' },
-]
-
-const INCOME_CATEGORIES = [
-  { label: 'Salary', color: 'bg-[#00C896]' },
-  { label: 'Freelance', color: 'bg-blue-500' },
-  { label: 'Interest', color: 'bg-violet-400' },
-  { label: 'Refund', color: 'bg-cyan-500' },
-  { label: 'Gift', color: 'bg-pink-500' },
-  { label: 'Other', color: 'bg-slate-500' },
-]
+import { useQuery } from '@tanstack/react-query'
+import CategorySelect from '../ui/CategorySelect'
+import CashAvatar from '../ui/CashAvatar'
 
 function todayISO() {
   const now = new Date()
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
-}
-
-function CategorySelect({
-  categories,
-  value,
-  onChange,
-}: {
-  categories: typeof EXPENSE_CATEGORIES
-  value: string
-  onChange: (v: string) => void
-}) {
-  const [open, setOpen] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
-  const selected = categories.find(c => c.label === value)
-
-  useEffect(() => {
-    function handler(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
-    }
-    document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
-  }, [])
-
-  return (
-    <div ref={ref} className="relative">
-      <button
-        onClick={() => setOpen(!open)}
-        className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border text-sm text-left outline-none transition-colors bg-[#07111c] ${
-          open ? 'border-[#00C896]/60' : 'border-[#1a2d3d]'
-        } ${value ? 'text-white' : 'text-[#4a6070]'}`}
-      >
-        <span className="flex items-center gap-2.5">
-          {selected && (
-            <span
-              className={`w-2 h-2 rounded-full shrink-0 ${selected.color}`}
-            />
-          )}
-          {value || 'Select a category'}
-        </span>
-        <ChevronDown
-          size={15}
-          className={`text-[#8b949e] transition-transform duration-200 ${open ? 'rotate-180' : ''}`}
-        />
-      </button>
-
-      {open && (
-        <div className="absolute z-50 left-0 right-0 mt-1.5 rounded-xl border border-[#1a2d3d] py-1 shadow-2xl overflow-hidden bg-[#0d1f2d]">
-          <div className="max-h-44 overflow-y-auto scrollbar-thin scrollbar-track-transparent scrollbar-thumb-[#1a2d3d]">
-            {categories.map(cat => (
-              <button
-                key={cat.label}
-                onClick={() => {
-                  onChange(cat.label)
-                  setOpen(false)
-                }}
-                className={`w-full flex items-center justify-between px-4 py-2.5 text-sm text-left transition-colors ${
-                  value === cat.label
-                    ? 'text-white bg-[#00C896]/5'
-                    : 'text-[#8b949e] hover:bg-white/3 hover:text-white'
-                }`}
-              >
-                <span className="flex items-center gap-2.5">
-                  <span
-                    className={`w-2 h-2 rounded-full shrink-0 ${cat.color}`}
-                  />
-                  {cat.label}
-                </span>
-                {value === cat.label && (
-                  <Check size={13} className="text-[#00C896]" />
-                )}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  )
 }
 
 interface AddTransactionModalProps {
@@ -127,21 +32,29 @@ export default function AddTransactionModal({
   const [type, setType] = useState<'expense' | 'income'>('expense')
   const [rawAmount, setRawAmount] = useState('')
   const [merchant, setMerchant] = useState('')
-  const [category, setCategory] = useState('')
+  const [categoryId, setCategoryId] = useState('')
   const [description, setDescription] = useState('')
   const [date, setDate] = useState(todayISO())
   const [isLoading, setIsLoading] = useState(false)
   const [submitted, setSubmitted] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  const { data: categoriesData } = useQuery({
+    queryKey: ['categories'],
+    queryFn: () => fetchCategories(getToken),
+    staleTime: Infinity,
+  })
+
   const isExpense = type === 'expense'
   const typeAccent = isExpense ? '#ef4444' : '#00C896'
   const typeAccentClass = isExpense ? 'text-red-400' : 'text-[#00C896]'
-  const categories = isExpense ? EXPENSE_CATEGORIES : INCOME_CATEGORIES
+  const categories = isExpense
+    ? (categoriesData?.expense ?? [])
+    : (categoriesData?.income ?? [])
 
   function handleTypeChange(t: 'expense' | 'income') {
     setType(t)
-    setCategory('')
+    setCategoryId('')
   }
 
   function handleAmountKey(e: React.KeyboardEvent<HTMLInputElement>) {
@@ -168,7 +81,7 @@ export default function AddTransactionModal({
 
   const parsedAmount = rawAmount ? parseInt(rawAmount, 10) / 100 : 0
   const amountValid = parsedAmount > 0 && parsedAmount <= 99999
-  const formValid = amountValid && merchant.trim() && category
+  const formValid = amountValid && merchant.trim() && categoryId
 
   async function handleSubmit() {
     if (!formValid) return
@@ -179,7 +92,7 @@ export default function AddTransactionModal({
       type: type === 'expense' ? 'DEBIT' : 'CREDIT',
       amount: parsedAmount,
       merchant: merchant.trim(),
-      category: category || undefined,
+      categoryId: categoryId || undefined,
       description: description.trim() || undefined,
       date,
     }
@@ -216,9 +129,7 @@ export default function AddTransactionModal({
 
         <div className="flex items-center justify-between px-6 pt-6 pb-4">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-[#00C896]/10">
-              <HandCoins size={15} className="text-[#00C896]" />
-            </div>
+            <CashAvatar size="sm" rounded="lg" />
             <h2 className="text-base font-semibold text-white">
               Add Transaction
             </h2>
@@ -311,8 +222,8 @@ export default function AddTransactionModal({
             </p>
             <CategorySelect
               categories={categories}
-              value={category}
-              onChange={setCategory}
+              value={categoryId}
+              onChange={setCategoryId}
             />
           </div>
 
