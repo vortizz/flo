@@ -6,7 +6,7 @@ import {
 import { PrismaService } from '../../prisma.service'
 import { GetTransactionsDto } from './dto/get-transactions.dto'
 import { CreateManualTransactionDto } from './dto/create-manual-transaction.dto'
-import { UpdateManualTransactionDto } from './dto/update-manual-transaction.dto'
+import { UpdateTransactionDto } from './dto/update-transaction.dto'
 import { Institution, SourceType } from '@prisma/client'
 import { startOfDayUtc, endOfDayUtc } from 'src/common/utils/date.helper'
 
@@ -69,6 +69,7 @@ export class TransactionsService {
           description: true,
           date: true,
           source: true,
+          isExcluded: true,
           account: {
             select: {
               id: true,
@@ -99,6 +100,7 @@ export class TransactionsService {
         amount: Number(t.amount),
         type: t.type,
         source: t.source,
+        isExcluded: t.isExcluded,
         isCash: t.account.isCash,
         account: t.account.accountName,
         accountId: t.account.id,
@@ -208,10 +210,10 @@ export class TransactionsService {
     return transaction
   }
 
-  async updateManualTransaction(
+  async updateTransaction(
     clerkId: string,
     transactionId: string,
-    dto: UpdateManualTransactionDto,
+    dto: UpdateTransactionDto,
   ) {
     const user = await this.prisma.user.findUniqueOrThrow({
       where: { clerkId },
@@ -225,22 +227,25 @@ export class TransactionsService {
     if (!transaction) throw new NotFoundException('Transaction not found')
     if (transaction.account.userId !== user.id)
       throw new ForbiddenException('Not your transaction')
-    if (transaction.source !== SourceType.MANUAL)
-      throw new ForbiddenException('Can only edit manual transactions')
+
+    const isManual = transaction.source === SourceType.MANUAL
 
     const updated = await this.prisma.transaction.update({
       where: { id: transactionId },
       data: {
-        ...(dto.type && { type: dto.type }),
-        ...(dto.amount && { amount: dto.amount }),
-        ...(dto.merchant && { merchant: dto.merchant }),
+        // Manual only
+        ...(isManual && dto.type && { type: dto.type }),
+        ...(isManual && dto.amount && { amount: dto.amount }),
+        ...(isManual && dto.merchant && { merchant: dto.merchant }),
+        ...(isManual && dto.date && { date: new Date(dto.date) }),
+        // All transactions
         ...(dto.categoryId !== undefined && { categoryId: dto.categoryId }),
         ...(dto.description !== undefined && { description: dto.description }),
-        ...(dto.date && { date: new Date(dto.date) }),
+        ...(dto.isExcluded !== undefined && { isExcluded: dto.isExcluded }),
       },
     })
 
-    await this.updateCashBalance(transaction.accountId)
+    if (isManual) await this.updateCashBalance(transaction.accountId)
 
     return updated
   }

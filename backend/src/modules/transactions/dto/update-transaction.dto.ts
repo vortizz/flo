@@ -1,7 +1,16 @@
-import { IsIn, IsNumber, IsOptional, IsString, Max, Min } from 'class-validator'
+import {
+  IsBoolean,
+  IsIn,
+  IsNumber,
+  IsOptional,
+  IsString,
+  Max,
+  Min,
+} from 'class-validator'
 import { Type } from 'class-transformer'
 
-export class UpdateManualTransactionDto {
+export class UpdateTransactionDto {
+  // Manual only
   @IsOptional()
   @IsIn(['DEBIT', 'CREDIT'])
   type?: 'DEBIT' | 'CREDIT'
@@ -19,6 +28,11 @@ export class UpdateManualTransactionDto {
 
   @IsOptional()
   @IsString()
+  date?: string
+
+  // All transactions
+  @IsOptional()
+  @IsString()
   categoryId?: string
 
   @IsOptional()
@@ -26,6 +40,6 @@ export class UpdateManualTransactionDto {
   description?: string
 
   @IsOptional()
-  @IsString()
-  date?: string
+  @IsBoolean()
+  isExcluded?: boolean
 }

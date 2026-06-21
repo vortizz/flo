@@ -14,7 +14,7 @@ import { Timezone } from 'src/common/decorators/timezone.decorator'
 import { User } from 'src/common/decorators/user.decorator'
 import type { ClerkUser } from 'src/common/types'
 import { CreateManualTransactionDto } from './dto/create-manual-transaction.dto'
-import { UpdateManualTransactionDto } from './dto/update-manual-transaction.dto'
+import { UpdateTransactionDto } from './dto/update-transaction.dto'
 
 @Controller('transactions')
 export class TransactionsController {
@@ -43,16 +43,12 @@ export class TransactionsController {
   }
 
   @Patch(':id')
-  updateManualTransaction(
+  updateTransaction(
     @Param('id') id: string,
-    @Body() body: UpdateManualTransactionDto,
+    @Body() body: UpdateTransactionDto,
     @User() user: ClerkUser,
   ) {
-    return this.transactionsService.updateManualTransaction(
-      user.userId,
-      id,
-      body,
-    )
+    return this.transactionsService.updateTransaction(user.userId, id, body)
   }
 
   @Delete(':id')

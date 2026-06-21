@@ -8,6 +8,7 @@ import {
   type Transaction,
   deleteManualTransaction,
   updateManualTransaction,
+  updateTransaction,
   type ManualTransactionData,
 } from '@/lib/api/transactions'
 import { type CategoriesResponse } from '@/lib/api/categories'
@@ -66,6 +67,19 @@ export default function TransactionDetailPanel({
     onClose()
   }
 
+  async function handleExcludeToggle(isExcluded: boolean) {
+    await updateTransaction(localTx.id, { isExcluded }, getToken)
+    queryClient.invalidateQueries({ queryKey: ['transactions'] })
+    queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] })
+    queryClient.invalidateQueries({ queryKey: ['dashboard-chart'] })
+    queryClient.invalidateQueries({ queryKey: ['dashboard-chart-summary'] })
+    queryClient.invalidateQueries({ queryKey: ['dashboard-categories'] })
+    queryClient.invalidateQueries({
+      queryKey: ['dashboard-recent-transactions'],
+    })
+    setLocalTx(prev => ({ ...prev, isExcluded }))
+  }
+
   return (
     <div
       className="border-l border-[#2dd4bf]/10 flex flex-col shadow-2xl overflow-hidden w-full h-full min-h-full"
@@ -88,6 +102,7 @@ export default function TransactionDetailPanel({
               onEdit={() => setMode('edit')}
               onDelete={() => setMode('delete')}
               onClose={onClose}
+              onExcludeToggle={handleExcludeToggle}
             />
           </motion.div>
         )}

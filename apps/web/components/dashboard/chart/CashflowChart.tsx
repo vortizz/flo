@@ -55,9 +55,12 @@ function formatDetailedDate(
   return date.toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })
 }
 
-function formatAUD(value: number) {
-  if (value >= 1000) return `$${(value / 1000).toFixed(1)}k`
-  return `$${value}`
+function formatAUD(amount: number) {
+  return new Intl.NumberFormat('en-AU', {
+    style: 'currency',
+    currency: 'AUD',
+    minimumFractionDigits: 2,
+  }).format(amount)
 }
 
 const CustomTooltip = ({ active, payload, label }: any) => {
@@ -71,7 +74,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
           style={{ color: entry.color }}
           className="font-semibold capitalize"
         >
-          {entry.name}: ${entry.value.toLocaleString('en-AU')}
+          {entry.name}: {formatAUD(entry.value)}
         </span>
       ))}
     </div>
