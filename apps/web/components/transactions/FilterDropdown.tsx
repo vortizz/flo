@@ -1,13 +1,15 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, createElement } from 'react'
 import { ChevronDown, ChevronUp, Check } from 'lucide-react'
+import { getCategoryIcon } from '@/components/ui/categoryIcon'
 
 interface FilterOption {
   label: string
   value: string
   color?: string
   icon?: React.ReactNode
+  categoryIcon?: string
 }
 
 interface FilterDropdownProps {
@@ -65,38 +67,54 @@ export default function FilterDropdown({
 
       {open && (
         <div className="absolute left-0 top-full mt-2 z-50 p-1.5 bg-[#0d1f2d] border border-[#1a2d3d] rounded-xl shadow-xl min-w-56 overflow-hidden max-h-80 overflow-y-auto">
-          {options.map((opt, i) => (
-            <button
-              key={opt.value}
-              onClick={() => {
-                onChange(opt.value)
-                setOpen(false)
-              }}
-              className={[
-                'w-full flex items-center justify-between gap-3 px-4 py-3 text-xs transition-colors text-left',
-                opt.value === value
-                  ? 'text-[#00c896] bg-[#00c8960f]'
-                  : 'text-[#cbd5e1] hover:text-white hover:bg-[#ffffff08]',
-              ].join(' ')}
-            >
-              <span className="flex items-center gap-2.5">
-                {opt.icon ? (
-                  opt.icon
-                ) : opt.color ? (
-                  <span
-                    className="w-2 h-2 rounded-full shrink-0"
-                    style={{ background: opt.color }}
-                  />
-                ) : (
-                  icon
+          {options.map(opt => {
+            const CategoryIcon = opt.categoryIcon
+              ? getCategoryIcon(opt.categoryIcon)
+              : null
+
+            return (
+              <button
+                key={opt.value}
+                onClick={() => {
+                  onChange(opt.value)
+                  setOpen(false)
+                }}
+                className={[
+                  'w-full flex items-center justify-between gap-3 px-4 py-3 text-xs transition-colors text-left',
+                  opt.value === value
+                    ? 'text-[#00c896] bg-[#00c8960f]'
+                    : 'text-[#cbd5e1] hover:text-white hover:bg-[#ffffff08]',
+                ].join(' ')}
+              >
+                <span className="flex items-center gap-2.5">
+                  {opt.icon ? (
+                    opt.icon
+                  ) : CategoryIcon && opt.color ? (
+                    <div
+                      className="w-5 h-5 rounded-md flex items-center justify-center shrink-0"
+                      style={{ backgroundColor: `${opt.color}20` }}
+                    >
+                      {createElement(CategoryIcon, {
+                        size: 11,
+                        style: { color: opt.color },
+                      })}
+                    </div>
+                  ) : opt.color ? (
+                    <span
+                      className="w-2 h-2 rounded-full shrink-0"
+                      style={{ background: opt.color }}
+                    />
+                  ) : (
+                    icon
+                  )}
+                  {opt.label}
+                </span>
+                {opt.value === value && (
+                  <Check size={12} className="text-[#00C896]" />
                 )}
-                {opt.label}
-              </span>
-              {opt.value === value && (
-                <Check size={12} className="text-[#00C896]" />
-              )}
-            </button>
-          ))}
+              </button>
+            )
+          })}
         </div>
       )}
     </div>

@@ -64,6 +64,7 @@ export default function TransactionsFilters({
       label: c.name,
       value: c.id,
       color: c.color,
+      categoryIcon: c.icon,
     })) ?? []),
   ]
 

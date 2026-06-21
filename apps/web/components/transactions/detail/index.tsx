@@ -34,6 +34,7 @@ export default function TransactionDetailPanel({
     await updateManualTransaction(localTx.id, data, getToken)
     queryClient.invalidateQueries({ queryKey: ['transactions'] })
     queryClient.invalidateQueries({ queryKey: ['accounts'] })
+    queryClient.invalidateQueries({ queryKey: ['categories'] })
 
     const categoriesData = queryClient.getQueryData<CategoriesResponse>([
       'categories',
