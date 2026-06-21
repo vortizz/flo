@@ -134,9 +134,18 @@ export class TransactionsService {
         },
       }),
       this.prisma.category.findMany({
+        where: {
+          OR: [{ userId: null }, { userId: user.id }],
+        },
         orderBy: { name: 'asc' },
-        select: { id: true, name: true, color: true, icon: true, type: true },
-        distinct: ['name', 'type'],
+        select: {
+          id: true,
+          name: true,
+          color: true,
+          icon: true,
+          type: true,
+          userId: true,
+        },
       }),
     ])
 
@@ -162,6 +171,7 @@ export class TransactionsService {
             : c.name,
         color: c.color,
         icon: c.icon,
+        userId: c.userId,
       })),
     }
   }

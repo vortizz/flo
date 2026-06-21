@@ -3,16 +3,24 @@
 import { useState } from 'react'
 import Image from 'next/image'
 import { X, Loader2, Check } from 'lucide-react'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '@clerk/nextjs'
 import {
   type Transaction,
   type ManualTransactionData,
 } from '@/lib/api/transactions'
-import { fetchCategories } from '@/lib/api/categories'
+import {
+  fetchCategories,
+  createUserCategory,
+  updateUserCategory,
+  type Category,
+  type CreateUserCategoryData,
+  type UpdateUserCategoryData,
+} from '@/lib/api/categories'
 import SingleDatePicker from '../../ui/SingleDatePicker'
 import CategorySelect from '@/components/ui/CategorySelect'
 import CashAvatar from '@/components/ui/CashAvatar'
+import CategoryModal from '@/components/categories/CategoryModal'
 
 export default function EditMode({
   tx,
@@ -24,6 +32,8 @@ export default function EditMode({
   onCancel: () => void
 }) {
   const { getToken } = useAuth()
+  const queryClient = useQueryClient()
+
   const { data: categoriesData } = useQuery({
     queryKey: ['categories'],
     queryFn: () => fetchCategories(getToken),
@@ -47,6 +57,9 @@ export default function EditMode({
   const [description, setDescription] = useState(tx.description ?? '')
   const [date, setDate] = useState(tx.date.slice(0, 10))
 
+  const [showCategoryModal, setShowCategoryModal] = useState(false)
+  const [editingCategory, setEditingCategory] = useState<Category | null>(null)
+
   const isExpense = type === 'expense'
 
   const categories = isExpense
@@ -54,7 +67,6 @@ export default function EditMode({
     : (categoriesData?.income ?? [])
 
   const resolvedDefault = tx.categoryId ?? ''
-
   const categoryId =
     selectedCategoryId !== null ? selectedCategoryId : resolvedDefault
 
@@ -87,6 +99,23 @@ export default function EditMode({
   function handleTypeChange(t: 'expense' | 'income') {
     setType(t)
     setSelectedCategoryId('')
+  }
+
+  async function handleCategorySave(
+    data: CreateUserCategoryData | UpdateUserCategoryData,
+  ) {
+    if (editingCategory) {
+      await updateUserCategory(editingCategory.id, data, getToken)
+    } else {
+      const created = await createUserCategory(
+        data as CreateUserCategoryData,
+        getToken,
+      )
+      setSelectedCategoryId(created.id)
+    }
+    await queryClient.invalidateQueries({ queryKey: ['categories'] })
+    setEditingCategory(null)
+    setShowCategoryModal(false)
   }
 
   async function handleSave() {
@@ -203,6 +232,14 @@ export default function EditMode({
               categories={categories}
               value={categoryId}
               onChange={setSelectedCategoryId}
+              onCreateCategory={() => {
+                setEditingCategory(null)
+                setShowCategoryModal(true)
+              }}
+              onEditCategory={cat => {
+                setEditingCategory(cat)
+                setShowCategoryModal(true)
+              }}
               size="sm"
             />
           </div>
@@ -295,6 +332,18 @@ export default function EditMode({
           </button>
         </div>
       </div>
+
+      {showCategoryModal && (
+        <CategoryModal
+          editCategory={editingCategory ?? undefined}
+          defaultType={type === 'expense' ? 'DEBIT' : 'CREDIT'}
+          onSave={handleCategorySave}
+          onClose={() => {
+            setShowCategoryModal(false)
+            setEditingCategory(null)
+          }}
+        />
+      )}
     </>
   )
 }

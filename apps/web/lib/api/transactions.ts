@@ -54,6 +54,7 @@ export interface FilterOptions {
     name: string
     color: string
     icon: string
+    userId: string | null
   }[]
 }
 

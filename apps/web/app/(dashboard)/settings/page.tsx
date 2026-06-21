@@ -1,10 +1,5 @@
-import SettingsLayout from '@/components/settings/SettingsLayout'
-import ProfileSection from '@/components/settings/ProfileSection'
+import { redirect } from 'next/navigation'
 
 export default function SettingsPage() {
-  return (
-    <SettingsLayout>
-      <ProfileSection />
-    </SettingsLayout>
-  )
+  redirect('/settings/profile')
 }

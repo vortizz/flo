@@ -31,11 +31,20 @@ async function main() {
   console.log('Seeding categories...')
 
   for (const category of CATEGORIES) {
-    await prisma.category.upsert({
-      where: { name_type: { name: category.name, type: category.type } },
-      update: { color: category.color, icon: category.icon },
-      create: category,
+    const existing = await prisma.category.findFirst({
+      where: { userId: null, name: category.name, type: category.type },
     })
+
+    if (existing) {
+      await prisma.category.update({
+        where: { id: existing.id },
+        data: { color: category.color, icon: category.icon },
+      })
+    } else {
+      await prisma.category.create({
+        data: { ...category, userId: null },
+      })
+    }
   }
 
   console.log('✅ Categories seeded successfully')
@@ -44,8 +53,8 @@ async function main() {
   console.log('Seeding category mappings...')
 
   for (const mapping of CATEGORY_MAPPINGS) {
-    const category = await prisma.category.findUnique({
-      where: { name_type: { name: mapping.categoryName, type: mapping.type } },
+    const category = await prisma.category.findFirst({
+      where: { userId: null, name: mapping.categoryName, type: mapping.type },
     })
 
     if (!category) {
