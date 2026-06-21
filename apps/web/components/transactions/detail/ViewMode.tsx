@@ -1,7 +1,12 @@
+'use client'
+
 import Image from 'next/image'
-import { X, Trash2, Pencil } from 'lucide-react'
-import { createElement } from 'react'
-import { type Transaction } from '@/lib/api/transactions'
+import { X, Trash2, Pencil, EyeOff, Eye, Loader2, Check } from 'lucide-react'
+import { createElement, useState } from 'react'
+import {
+  type Transaction,
+  type UpdateTransactionData,
+} from '@/lib/api/transactions'
 import { formatAUD, formatDate } from './utils'
 import { getCategoryIcon } from '@/components/ui/categoryIcon'
 import CashAvatar from '@/components/ui/CashAvatar'
@@ -44,12 +49,50 @@ export default function ViewMode({
   onEdit,
   onDelete,
   onClose,
+  onUpdate,
 }: {
   tx: Transaction
   onEdit: () => void
   onDelete: () => void
   onClose: () => void
+  onUpdate: (data: UpdateTransactionData) => Promise<void>
 }) {
+  const [pendingExcluded, setPendingExcluded] = useState<boolean | null>(null)
+  const [isSaving, setIsSaving] = useState(false)
+  const [saved, setSaved] = useState(false)
+
+  const isDirty = pendingExcluded !== null
+  const displayExcluded =
+    pendingExcluded !== null ? pendingExcluded : tx.isExcluded
+
+  function handleToggleExclude() {
+    const next = !displayExcluded
+    setPendingExcluded(next === tx.isExcluded ? null : next)
+    setSaved(false)
+  }
+
+  function handleCancel() {
+    setPendingExcluded(null)
+    setSaved(false)
+  }
+
+  async function handleConfirm() {
+    if (pendingExcluded === null) return
+    setIsSaving(true)
+    try {
+      await onUpdate({ isExcluded: pendingExcluded })
+      setSaved(true)
+      setTimeout(() => {
+        setSaved(false)
+        setPendingExcluded(null)
+      }, 1200)
+    } catch {
+      setPendingExcluded(null)
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
   return (
     <>
       <div className="flex items-center justify-between p-6 border-b border-white/5 shrink-0">
@@ -150,22 +193,105 @@ export default function ViewMode({
               </div>
             )}
           </div>
+
+          {/* Exclude from budget */}
+          <div>
+            <div className="text-xs font-medium text-[#8b949e] tracking-wide mb-1.5">
+              Budget
+            </div>
+            <button
+              onClick={handleToggleExclude}
+              className={`w-full p-3 rounded-xl border flex items-center justify-between text-sm transition-colors ${
+                displayExcluded
+                  ? 'border-amber-500/20 bg-amber-500/5'
+                  : 'border-white/5 bg-[#1e293b4d]'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                {displayExcluded ? (
+                  <EyeOff size={15} className="text-amber-400 shrink-0" />
+                ) : (
+                  <Eye size={15} className="text-[#8b949e] shrink-0" />
+                )}
+                <span
+                  className={displayExcluded ? 'text-amber-400' : 'text-white'}
+                >
+                  {displayExcluded
+                    ? 'Excluded from budget'
+                    : 'Included in budget'}
+                </span>
+              </div>
+              <div
+                className={`w-9 h-5 rounded-full transition-colors relative shrink-0 ${
+                  displayExcluded ? 'bg-amber-500/30' : 'bg-[#1a2d3d]'
+                }`}
+              >
+                <div
+                  className={`absolute top-0.5 w-4 h-4 rounded-full transition-all ${
+                    displayExcluded
+                      ? 'left-4.5 bg-amber-400'
+                      : 'left-0.5 bg-[#8b949e]'
+                  }`}
+                />
+              </div>
+            </button>
+          </div>
         </div>
       </div>
 
-      {tx.isCash && (
+      {/* Bottom bar */}
+      {isDirty ? (
         <div className="px-6 py-5 border-t border-[#1a2d3d] shrink-0">
           <div className="flex gap-3">
             <button
-              onClick={onDelete}
-              className="flex-1 py-3 rounded-xl border border-[#1a2d3d] text-[#8b949e] hover:text-red-400 hover:border-red-500/20 hover:bg-red-500/5 text-sm font-medium transition-colors flex items-center justify-center gap-2"
+              onClick={handleCancel}
+              disabled={isSaving}
+              className="flex-1 py-3 rounded-xl border border-[#1a2d3d] text-[#8b949e] hover:text-white text-sm font-medium transition-colors disabled:opacity-50"
             >
-              <Trash2 size={14} />
-              Delete
+              Cancel
             </button>
             <button
+              onClick={handleConfirm}
+              disabled={isSaving || saved}
+              className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-semibold transition-all duration-200 disabled:cursor-not-allowed ${
+                saved
+                  ? 'bg-[#00C896]/20 text-[#00C896]'
+                  : 'bg-[#00C896] hover:bg-[#00b084] text-black shadow-[0_4px_20px_rgba(0,200,150,0.25)]'
+              }`}
+            >
+              {saved ? (
+                <>
+                  <Check size={15} strokeWidth={2.5} />
+                  Saved!
+                </>
+              ) : isSaving ? (
+                <>
+                  <Loader2 size={15} className="animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                'Confirm'
+              )}
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="px-6 py-5 border-t border-[#1a2d3d] shrink-0">
+          <div className="flex gap-3">
+            {tx.isCash && (
+              <button
+                onClick={onDelete}
+                className="flex-1 py-3 rounded-xl border border-[#1a2d3d] text-[#8b949e] hover:text-red-400 hover:border-red-500/20 hover:bg-red-500/5 text-sm font-medium transition-colors flex items-center justify-center gap-2"
+              >
+                <Trash2 size={14} />
+                Delete
+              </button>
+            )}
+            <button
               onClick={onEdit}
-              className="flex-1 py-3 rounded-xl bg-[#00C896] hover:bg-[#00b084] text-black text-sm font-semibold transition-colors flex items-center justify-center gap-2"
+              className={`py-3 rounded-xl bg-[#00C896] hover:bg-[#00b084] text-black text-sm font-semibold transition-colors flex items-center justify-center gap-2 ${
+                tx.isCash ? 'flex-1' : 'w-full'
+              }`}
             >
               <Pencil size={14} />
               Edit

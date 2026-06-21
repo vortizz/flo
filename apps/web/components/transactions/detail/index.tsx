@@ -8,7 +8,9 @@ import {
   type Transaction,
   deleteManualTransaction,
   updateManualTransaction,
+  updateTransaction,
   type ManualTransactionData,
+  type UpdateTransactionData,
 } from '@/lib/api/transactions'
 import { type CategoriesResponse } from '@/lib/api/categories'
 import ViewMode from './ViewMode'
@@ -30,12 +32,7 @@ export default function TransactionDetailPanel({
   const [mode, setMode] = useState<Mode>('view')
   const [localTx, setLocalTx] = useState<Transaction>(tx)
 
-  async function handleSave(data: ManualTransactionData) {
-    await updateManualTransaction(localTx.id, data, getToken)
-    queryClient.invalidateQueries({ queryKey: ['transactions'] })
-    queryClient.invalidateQueries({ queryKey: ['accounts'] })
-    queryClient.invalidateQueries({ queryKey: ['categories'] })
-
+  function resolveCategoryFields(categoryId: string | undefined) {
     const categoriesData = queryClient.getQueryData<CategoriesResponse>([
       'categories',
     ])
@@ -43,19 +40,44 @@ export default function TransactionDetailPanel({
       ...(categoriesData?.expense ?? []),
       ...(categoriesData?.income ?? []),
     ]
-    const matched = allCategories.find(c => c.id === data.categoryId)
+    return allCategories.find(c => c.id === categoryId)
+  }
+
+  async function handleSave(data: ManualTransactionData) {
+    const isManual = localTx.source === 'MANUAL'
+
+    if (isManual) {
+      await updateManualTransaction(localTx.id, data, getToken)
+      queryClient.invalidateQueries({ queryKey: ['accounts'] })
+    } else {
+      await updateTransaction(
+        localTx.id,
+        { categoryId: data.categoryId, description: data.description },
+        getToken,
+      )
+    }
+
+    queryClient.invalidateQueries({ queryKey: ['transactions'] })
+    queryClient.invalidateQueries({ queryKey: ['dashboard-categories'] })
+    queryClient.invalidateQueries({
+      queryKey: ['dashboard-recent-transactions'],
+    })
+
+    const matched = resolveCategoryFields(data.categoryId)
 
     setLocalTx(prev => ({
       ...prev,
-      type: data.type,
-      amount: data.amount,
-      merchant: data.merchant,
+      ...(isManual && {
+        type: data.type,
+        amount: data.amount,
+        merchant: data.merchant,
+        date: data.date,
+      }),
       category: matched?.name ?? prev.category,
       categoryId: data.categoryId ?? prev.categoryId,
       categoryColor: matched?.color ?? prev.categoryColor,
       categoryIcon: matched?.icon ?? prev.categoryIcon,
       description: data.description ?? '',
-      date: data.date,
     }))
   }
 
@@ -64,6 +86,34 @@ export default function TransactionDetailPanel({
     queryClient.invalidateQueries({ queryKey: ['transactions'] })
     queryClient.invalidateQueries({ queryKey: ['accounts'] })
     onClose()
+  }
+
+  async function handleUpdate(data: UpdateTransactionData) {
+    await updateTransaction(localTx.id, data, getToken)
+    queryClient.invalidateQueries({ queryKey: ['transactions'] })
+    queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] })
+    queryClient.invalidateQueries({ queryKey: ['dashboard-chart'] })
+    queryClient.invalidateQueries({ queryKey: ['dashboard-chart-summary'] })
+    queryClient.invalidateQueries({ queryKey: ['dashboard-categories'] })
+    queryClient.invalidateQueries({
+      queryKey: ['dashboard-recent-transactions'],
+    })
+
+    const matched = data.categoryId
+      ? resolveCategoryFields(data.categoryId)
+      : undefined
+
+    setLocalTx(prev => ({
+      ...prev,
+      ...(data.isExcluded !== undefined && { isExcluded: data.isExcluded }),
+      ...(data.categoryId !== undefined && {
+        categoryId: data.categoryId,
+        category: matched?.name ?? prev.category,
+        categoryColor: matched?.color ?? prev.categoryColor,
+        categoryIcon: matched?.icon ?? prev.categoryIcon,
+      }),
+      ...(data.description !== undefined && { description: data.description }),
+    }))
   }
 
   return (
@@ -88,6 +138,7 @@ export default function TransactionDetailPanel({
               onEdit={() => setMode('edit')}
               onDelete={() => setMode('delete')}
               onClose={onClose}
+              onUpdate={handleUpdate}
             />
           </motion.div>
         )}

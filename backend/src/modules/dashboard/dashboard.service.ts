@@ -62,6 +62,7 @@ export class DashboardService {
       where: {
         account: { userId },
         date: { gte: from, lte: to },
+        isExcluded: false,
       },
       select: { amount: true, type: true },
     })
@@ -101,6 +102,7 @@ export class DashboardService {
       where: {
         account: { userId: user.id },
         date: { gte: current.from, lte: current.to },
+        isExcluded: false,
       },
       select: { amount: true, type: true, date: true },
       orderBy: { date: 'asc' },
@@ -208,6 +210,7 @@ export class DashboardService {
       where: {
         account: { userId: user.id },
         date: { gte: rangeFrom, lte: rangeTo },
+        isExcluded: false,
       },
       select: { amount: true, type: true, date: true },
       orderBy: { date: 'asc' },
@@ -388,6 +391,7 @@ export class DashboardService {
           account: { userId: user.id },
           date: { gte: current.from, lte: current.to },
           type: 'DEBIT',
+          isExcluded: false,
         },
         select: {
           amount: true,
@@ -462,6 +466,7 @@ export class DashboardService {
       where: {
         account: { userId: user.id },
         date: { gte: current.from, lte: current.to },
+        isExcluded: false,
       },
       orderBy: { date: 'desc' },
       take: 5,

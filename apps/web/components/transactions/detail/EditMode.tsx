@@ -44,6 +44,8 @@ export default function EditMode({
   const [submitted, setSubmitted] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  const isManual = tx.source === 'MANUAL'
+
   const [type, setType] = useState<'expense' | 'income'>(
     tx.type === 'CREDIT' ? 'income' : 'expense',
   )
@@ -80,7 +82,9 @@ export default function EditMode({
 
   const parsedAmount = rawAmount ? parseInt(rawAmount, 10) / 100 : 0
   const amountValid = parsedAmount > 0 && parsedAmount <= 99999
-  const formValid = amountValid && merchant.trim() && categoryId
+  const formValid = isManual
+    ? amountValid && merchant.trim() && categoryId
+    : !!categoryId
 
   function handleAmountKey(e: React.KeyboardEvent<HTMLInputElement>) {
     if (
@@ -125,11 +129,11 @@ export default function EditMode({
     try {
       await onSave({
         type: type === 'expense' ? 'DEBIT' : 'CREDIT',
-        amount: parsedAmount,
-        merchant: merchant.trim(),
+        amount: isManual ? parsedAmount : tx.amount,
+        merchant: isManual ? merchant.trim() : tx.merchant,
         categoryId: categoryId || undefined,
         description: description.trim() || undefined,
-        date,
+        date: isManual ? date : tx.date.slice(0, 10),
       })
       setSubmitted(true)
       setTimeout(() => {
@@ -157,73 +161,79 @@ export default function EditMode({
 
       <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-track-transparent scrollbar-thumb-[#1a2d3d]">
         <div className="px-6 py-6 space-y-4">
-          <div>
-            <div className="text-xs font-medium text-[#8b949e] tracking-wide mb-1.5">
-              Merchant
-            </div>
-            <input
-              type="text"
-              value={merchant}
-              onChange={e => setMerchant(e.target.value)}
-              className="w-full bg-[#07111c] border border-[#1a2d3d] rounded-xl px-3 py-2 text-white text-sm placeholder:text-[#4a6070] focus:outline-none focus:border-[#00C896]/60 transition-colors"
-            />
-          </div>
+          {/* Manual only fields */}
+          {isManual && (
+            <>
+              <div>
+                <div className="text-xs font-medium text-[#8b949e] tracking-wide mb-1.5">
+                  Merchant
+                </div>
+                <input
+                  type="text"
+                  value={merchant}
+                  onChange={e => setMerchant(e.target.value)}
+                  className="w-full bg-[#07111c] border border-[#1a2d3d] rounded-xl px-3 py-2 text-white text-sm placeholder:text-[#4a6070] focus:outline-none focus:border-[#00C896]/60 transition-colors"
+                />
+              </div>
 
-          <div>
-            <div className="text-xs font-medium text-[#8b949e] tracking-wide mb-1.5">
-              Amount
-            </div>
-            <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[#4a6070]">
-                $
-              </span>
-              <input
-                type="text"
-                inputMode="numeric"
-                value={displayAmount}
-                onChange={handleAmountChange}
-                onKeyDown={handleAmountKey}
-                placeholder="0.00"
-                className={`w-full bg-[#07111c] border border-[#1a2d3d] rounded-xl pl-7 pr-14 py-2 text-sm focus:outline-none focus:border-[#00C896]/60 transition-colors ${
-                  isExpense ? 'text-red-400' : 'text-[#00C896]'
-                }`}
-              />
-              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[#4a6070]">
-                AUD
-              </span>
-            </div>
-          </div>
+              <div>
+                <div className="text-xs font-medium text-[#8b949e] tracking-wide mb-1.5">
+                  Amount
+                </div>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[#4a6070]">
+                    $
+                  </span>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    value={displayAmount}
+                    onChange={handleAmountChange}
+                    onKeyDown={handleAmountKey}
+                    placeholder="0.00"
+                    className={`w-full bg-[#07111c] border border-[#1a2d3d] rounded-xl pl-7 pr-14 py-2 text-sm focus:outline-none focus:border-[#00C896]/60 transition-colors ${
+                      isExpense ? 'text-red-400' : 'text-[#00C896]'
+                    }`}
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[#4a6070]">
+                    AUD
+                  </span>
+                </div>
+              </div>
 
-          <div>
-            <div className="text-xs font-medium text-[#8b949e] tracking-wide mb-1.5">
-              Type
-            </div>
-            <div className="flex gap-2">
-              {(['expense', 'income'] as const).map(t => (
-                <button
-                  key={t}
-                  onClick={() => handleTypeChange(t)}
-                  className={`flex-1 py-2 rounded-xl text-sm font-medium transition-all border ${
-                    type === t
-                      ? t === 'expense'
-                        ? 'bg-red-500/10 text-red-400 border-red-500/30'
-                        : 'bg-[#00C896]/10 text-[#00C896] border-[#00C896]/30'
-                      : 'text-[#8b949e] border-[#1a2d3d] hover:text-white'
-                  }`}
-                >
-                  {t === 'expense' ? 'Expense' : 'Income'}
-                </button>
-              ))}
-            </div>
-          </div>
+              <div>
+                <div className="text-xs font-medium text-[#8b949e] tracking-wide mb-1.5">
+                  Type
+                </div>
+                <div className="flex gap-2">
+                  {(['expense', 'income'] as const).map(t => (
+                    <button
+                      key={t}
+                      onClick={() => handleTypeChange(t)}
+                      className={`flex-1 py-2 rounded-xl text-sm font-medium transition-all border ${
+                        type === t
+                          ? t === 'expense'
+                            ? 'bg-red-500/10 text-red-400 border-red-500/30'
+                            : 'bg-[#00C896]/10 text-[#00C896] border-[#00C896]/30'
+                          : 'text-[#8b949e] border-[#1a2d3d] hover:text-white'
+                      }`}
+                    >
+                      {t === 'expense' ? 'Expense' : 'Income'}
+                    </button>
+                  ))}
+                </div>
+              </div>
 
-          <div>
-            <div className="text-xs font-medium text-[#8b949e] tracking-wide mb-1.5">
-              Date
-            </div>
-            <SingleDatePicker value={date} onChange={setDate} size="sm" />
-          </div>
+              <div>
+                <div className="text-xs font-medium text-[#8b949e] tracking-wide mb-1.5">
+                  Date
+                </div>
+                <SingleDatePicker value={date} onChange={setDate} size="sm" />
+              </div>
+            </>
+          )}
 
+          {/* All transactions */}
           <div>
             <div className="text-xs font-medium text-[#8b949e] tracking-wide mb-1.5">
               Category
@@ -336,7 +346,7 @@ export default function EditMode({
       {showCategoryModal && (
         <CategoryModal
           editCategory={editingCategory ?? undefined}
-          defaultType={type === 'expense' ? 'DEBIT' : 'CREDIT'}
+          defaultType={isExpense ? 'DEBIT' : 'CREDIT'}
           onSave={handleCategorySave}
           onClose={() => {
             setShowCategoryModal(false)

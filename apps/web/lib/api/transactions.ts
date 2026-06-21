@@ -15,6 +15,7 @@ export interface Transaction {
   logoUrl: string | null
   last4: string | null
   source: 'BASIQ' | 'MANUAL'
+  isExcluded: boolean
 }
 
 export interface TransactionsPagination {
@@ -65,6 +66,17 @@ export interface ManualTransactionData {
   categoryId?: string
   description?: string
   date: string
+}
+
+export interface UpdateTransactionData {
+  categoryId?: string
+  description?: string
+  isExcluded?: boolean
+  // Manual only
+  type?: 'DEBIT' | 'CREDIT'
+  amount?: number
+  merchant?: string
+  date?: string
 }
 
 export async function fetchTransactions(
@@ -131,6 +143,28 @@ export async function createManualTransaction(
 export async function updateManualTransaction(
   id: string,
   data: Partial<ManualTransactionData>,
+  getToken: () => Promise<string | null>,
+): Promise<Transaction> {
+  const token = await getToken()
+  const res = await fetch(
+    `${process.env.NEXT_PUBLIC_API_URL}/api/transactions/${id}`,
+    {
+      method: 'PATCH',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+        'x-timezone': Intl.DateTimeFormat().resolvedOptions().timeZone,
+      },
+      body: JSON.stringify(data),
+    },
+  )
+  if (!res.ok) throw new Error('Failed to update transaction')
+  return res.json()
+}
+
+export async function updateTransaction(
+  id: string,
+  data: UpdateTransactionData,
   getToken: () => Promise<string | null>,
 ): Promise<Transaction> {
   const token = await getToken()
