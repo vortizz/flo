@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
-import { useRouter, usePathname } from 'next/navigation'
+import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import { useInfiniteQuery } from '@tanstack/react-query'
 import { useAuth } from '@clerk/nextjs'
 import { fetchTransactions, type Transaction } from '@/lib/api/transactions'
@@ -64,29 +64,24 @@ export default function TransactionsTable() {
     Transaction | undefined
   >()
 
-  const getInitialParams = () => {
-    if (typeof window === 'undefined') return new URLSearchParams()
-    return new URLSearchParams(window.location.search)
-  }
+  const searchParams = useSearchParams()
 
-  const initParams = getInitialParams()
-
-  const [search, setSearch] = useState(initParams.get('search') ?? '')
+  const [search, setSearch] = useState(searchParams.get('search') ?? '')
   const [type, setType] = useState<'DEBIT' | 'CREDIT' | undefined>(
-    (initParams.get('type') as 'DEBIT' | 'CREDIT') || undefined,
+    (searchParams.get('type') as 'DEBIT' | 'CREDIT') || undefined,
   )
-  const [days, setDays] = useState(initParams.get('days') ?? '30')
+  const [days, setDays] = useState(searchParams.get('days') ?? '30')
   const [accountId, setAccountId] = useState<string | undefined>(
-    initParams.get('accountId') || undefined,
+    searchParams.get('accountId') || undefined,
   )
   const [categoryId, setCategoryId] = useState<string | undefined>(
-    initParams.get('categoryId') || undefined,
+    searchParams.get('categoryId') || undefined,
   )
   const [customRange, setCustomRange] = useState<
     { from: Date | undefined; to?: Date | undefined } | undefined
   >(() => {
-    const from = initParams.get('from')
-    const to = initParams.get('to')
+    const from = searchParams.get('from')
+    const to = searchParams.get('to')
     return from && to
       ? {
           from: new Date(from + 'T00:00:00'),

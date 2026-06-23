@@ -37,9 +37,7 @@ function BankAvatar({
   logoUrl: string | null
   isCash: boolean
 }) {
-  if (isCash) {
-    return <CashAvatar size="lg" />
-  }
+  if (isCash) return <CashAvatar size="lg" />
 
   if (logoUrl) {
     return (
@@ -123,7 +121,15 @@ function StatusBadge({
   )
 }
 
-export default function AccountRow({ account }: { account: Account }) {
+export default function AccountRow({
+  account,
+  onClick,
+  isSelected,
+}: {
+  account: Account
+  onClick?: () => void
+  isSelected?: boolean
+}) {
   const { getToken } = useAuth()
   const queryClient = useQueryClient()
   const [showModal, setShowModal] = useState(false)
@@ -155,7 +161,8 @@ export default function AccountRow({ account }: { account: Account }) {
     }
   }
 
-  async function handleSync() {
+  async function handleSync(e: React.MouseEvent) {
+    e.stopPropagation()
     setIsSyncing(true)
     try {
       const result = await syncAccount(account.id, getToken)
@@ -178,7 +185,14 @@ export default function AccountRow({ account }: { account: Account }) {
   return (
     <>
       {/* Mobile card */}
-      <div className="md:hidden flex flex-col gap-3 px-4 py-4 border-b border-[#1a2d3d]">
+      <div
+        onClick={onClick}
+        className={`md:hidden flex flex-col gap-3 px-4 py-4 border-b border-[#1a2d3d] cursor-pointer transition-colors ${
+          isSelected
+            ? 'bg-[#00C896]/5 border-l-2 border-l-[#00C896]'
+            : 'hover:bg-[#ffffff04]'
+        }`}
+      >
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <BankAvatar
@@ -230,7 +244,14 @@ export default function AccountRow({ account }: { account: Account }) {
       </div>
 
       {/* Desktop row */}
-      <div className="hidden md:grid grid-cols-[2fr_2fr_1fr_1fr_1fr_1.5fr_80px] gap-4 px-6 py-4 border-b border-[#1a2d3d] hover:bg-[#ffffff04] transition-colors items-center">
+      <div
+        onClick={onClick}
+        className={`hidden md:grid grid-cols-[2fr_2fr_1fr_1fr_1fr_1.5fr_80px] gap-4 px-6 py-4 border-b border-[#1a2d3d] transition-colors items-center cursor-pointer ${
+          isSelected
+            ? 'bg-[#00C896]/5 border-l-2 border-l-[#00C896]'
+            : 'hover:bg-[#ffffff04]'
+        }`}
+      >
         {/* Bank */}
         <div className="flex items-center gap-3 min-w-0">
           <BankAvatar

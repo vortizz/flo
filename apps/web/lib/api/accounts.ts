@@ -8,6 +8,25 @@ export interface Account {
   logoUrl: string | null
   status: 'connected' | 'disconnected' | 'syncing'
   isCash: boolean
+  accountType: string | null
+}
+
+export interface AccountDetail {
+  id: string
+  bankName: string
+  accountName: string
+  balance: number
+  last4: string | null
+  lastSyncedAt: string | null
+  logoUrl: string | null
+  status: 'connected' | 'disconnected'
+  isCash: boolean
+  accountType: string | null
+}
+
+export interface BalanceHistoryPoint {
+  date: string
+  balance: number
 }
 
 export interface AccountsSummary {
@@ -29,6 +48,39 @@ export async function fetchAccounts(
     headers: { Authorization: `Bearer ${token}` },
   })
   if (!res.ok) throw new Error('Failed to fetch accounts')
+  return res.json()
+}
+
+export async function fetchAccountDetail(
+  id: string,
+  getToken: () => Promise<string | null>,
+): Promise<AccountDetail> {
+  const token = await getToken()
+  const res = await fetch(
+    `${process.env.NEXT_PUBLIC_API_URL}/api/accounts/${id}`,
+    {
+      headers: { Authorization: `Bearer ${token}` },
+    },
+  )
+  if (!res.ok) throw new Error('Failed to fetch account detail')
+  return res.json()
+}
+
+export async function fetchBalanceHistory(
+  id: string,
+  getToken: () => Promise<string | null>,
+): Promise<BalanceHistoryPoint[]> {
+  const token = await getToken()
+  const res = await fetch(
+    `${process.env.NEXT_PUBLIC_API_URL}/api/accounts/${id}/balance-history`,
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'x-timezone': Intl.DateTimeFormat().resolvedOptions().timeZone,
+      },
+    },
+  )
+  if (!res.ok) throw new Error('Failed to fetch balance history')
   return res.json()
 }
 

@@ -1,6 +1,6 @@
 import { HandCoins } from 'lucide-react'
 
-type CashAvatarSize = 'xs' | 'sm' | 'md' | 'lg'
+type CashAvatarSize = 'xs' | 'sm' | 'md' | 'lg' | 'xl'
 type CashAvatarRounded = 'full' | 'lg' | 'xl' | '2xl'
 
 const SIZE_CONFIG: Record<CashAvatarSize, { container: string; icon: number }> =
@@ -9,6 +9,7 @@ const SIZE_CONFIG: Record<CashAvatarSize, { container: string; icon: number }> =
     sm: { container: 'w-8 h-8', icon: 15 },
     md: { container: 'w-8 h-8', icon: 16 },
     lg: { container: 'w-9 h-9', icon: 16 },
+    xl: { container: 'w-12 h-12', icon: 20 },
   }
 
 const ROUNDED_CONFIG: Record<CashAvatarRounded, string> = {
