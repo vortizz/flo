@@ -1,7 +1,12 @@
-import { Injectable, Logger } from '@nestjs/common'
+import { Injectable, Logger, NotFoundException } from '@nestjs/common'
 import { PrismaService } from '../../prisma.service'
 import { BasiqService } from '../basiq/basiq.service'
 import { SourceType } from '@prisma/client'
+import {
+  endOfDayUtc,
+  startOfDayUtc,
+  toDateKeyTz,
+} from 'src/common/utils/date.helper'
 
 @Injectable()
 export class AccountsService {
@@ -48,6 +53,7 @@ export class AccountsService {
         logoUrl: a.institution?.logoUrl ?? null,
         status: a.status.toLowerCase() as 'connected' | 'disconnected',
         isCash: a.isCash,
+        accountType: a.accountType ?? null,
       })),
     }
   }
@@ -164,5 +170,99 @@ export class AccountsService {
     const failed = results.filter(r => r.status === 'rejected').length
 
     return { synced, failed }
+  }
+
+  async getAccountDetail(clerkId: string, accountId: string) {
+    const user = await this.prisma.user.findUniqueOrThrow({
+      where: { clerkId },
+    })
+
+    const account = await this.prisma.account.findFirst({
+      where: { id: accountId, userId: user.id },
+      include: { institution: { select: { logoUrl: true } } },
+    })
+
+    if (!account) throw new NotFoundException('Account not found')
+
+    return {
+      id: account.id,
+      bankName: account.bankName,
+      accountName: account.accountName,
+      balance: Number(account.balance),
+      last4: account.last4,
+      lastSyncedAt: account.lastSyncedAt,
+      logoUrl: account.institution?.logoUrl ?? null,
+      status: account.status.toLowerCase() as 'connected' | 'disconnected',
+      isCash: account.isCash,
+      accountType: account.accountType ?? null,
+    }
+  }
+
+  async getBalanceHistory(
+    clerkId: string,
+    accountId: string,
+    tz: string = 'UTC',
+  ) {
+    const user = await this.prisma.user.findUniqueOrThrow({
+      where: { clerkId },
+    })
+
+    const account = await this.prisma.account.findFirst({
+      where: { id: accountId, userId: user.id },
+    })
+
+    if (!account) throw new NotFoundException('Account not found')
+
+    const todayKey = toDateKeyTz(new Date(), tz)
+    const rangeFrom = startOfDayUtc(
+      toDateKeyTz(
+        new Date(new Date().getTime() - 29 * 24 * 60 * 60 * 1000),
+        tz,
+      ),
+      tz,
+    )
+    const rangeTo = endOfDayUtc(todayKey, tz)
+
+    const transactions = await this.prisma.transaction.findMany({
+      where: {
+        accountId,
+        date: { gte: rangeFrom, lte: rangeTo },
+      },
+      select: { amount: true, type: true, date: true },
+      orderBy: { date: 'desc' },
+    })
+
+    // Build a map of net change per day
+    const changeByDay = new Map<string, number>()
+    for (const tx of transactions) {
+      const key = toDateKeyTz(tx.date, tz)
+      const delta =
+        tx.type === 'CREDIT' ? Number(tx.amount) : -Number(tx.amount)
+      changeByDay.set(key, (changeByDay.get(key) ?? 0) + delta)
+    }
+
+    // Generate 30 day keys from today backwards
+    const days: string[] = []
+    for (let i = 0; i < 30; i++) {
+      const d = new Date(new Date().getTime() - i * 24 * 60 * 60 * 1000)
+      days.unshift(toDateKeyTz(d, tz))
+    }
+
+    // Walk backwards from current balance
+    const result: { date: string; balance: number }[] = []
+    let runningBalance = Number(account.balance)
+
+    for (let i = days.length - 1; i >= 0; i--) {
+      const day = days[i]
+      result.unshift({
+        date: day,
+        balance: Math.round(runningBalance * 100) / 100,
+      })
+      // Subtract this day's net change to get the balance before this day
+      const dayChange = changeByDay.get(day) ?? 0
+      runningBalance -= dayChange
+    }
+
+    return result
   }
 }

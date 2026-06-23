@@ -148,6 +148,7 @@ export class BasiqController {
           institutionId: institution?.id ?? null,
           lastSyncedAt: new Date(),
           status: AccountStatus.CONNECTED,
+          accountType: account.class?.type ?? null,
         },
         create: {
           userId: user.id,
@@ -160,6 +161,7 @@ export class BasiqController {
           last4,
           lastSyncedAt: new Date(),
           status: AccountStatus.CONNECTED,
+          accountType: account.class?.type ?? null,
         },
       })
       savedAccounts.push({ id: saved.id, basiqId: account.id })
