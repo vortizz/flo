@@ -130,27 +130,23 @@ High-level layout of the monorepo:
 ```
 flo/
 ├── apps/
-│   └── web/                      # Next.js 15 frontend
-│       ├── components/
-│       │   ├── dashboard/
-│       │   │   └── layout/       # DashboardLayout, Sidebar, TopBar, PeriodSelector, DashboardContext
-│       │   ├── categories/       # CategoryModal, category management UI
-│       │   └── settings/         # Settings pages, ConfirmDialog
-│       ├── constants/
-│       │   └── categoryIcons.ts  # Curated icon map for categories
-│       └── app/                  # Routes (dashboard, transactions, accounts, settings)
-├── backend (NestJS + Fastify)
-│   ├── src/
-│   │   ├── common/
-│   │   │   ├── utils/date.helper.ts     # Timezone-safe date helpers
-│   │   │   └── decorators/              # @Timezone(), @User()
-│   │   ├── accounts/
-│   │   ├── transactions/
-│   │   ├── categories/
-│   │   ├── dashboard/
-│   │   └── basiq/                       # Open Banking integration + sync
-│   └── prisma/
-│       └── schema.prisma
+│   └── web/                    # Next.js 15 frontend
+│       ├── app/
+│       │   ├── (auth)/         # sign-in, sign-up, password reset, email verification
+│       │   ├── (dashboard)/    # accounts, dashboard, settings, transactions
+│       │   └── onboarding/     # bank connection flow
+│       ├── components/         # accounts, categories, dashboard, landing, settings, transactions, ui
+│       ├── lib/                # api client, query-client, utils
+│       ├── hooks/
+│       └── constants/
+│
+├── backend/                    # NestJS + Fastify
+│   ├── prisma/                 # schema, migrations, seed
+│   └── src/
+│       ├── common/             # decorators, guards, interceptors, date helpers
+│       ├── config/
+│       └── modules/            # accounts, auth, basiq, categories, dashboard, institutions, transactions, users
+│
 └── docker-compose.yml
 ```
 
