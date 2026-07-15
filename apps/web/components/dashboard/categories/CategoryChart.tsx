@@ -1,0 +1,148 @@
+'use client'
+
+import { useQuery } from '@tanstack/react-query'
+import { useAuth } from '@clerk/nextjs'
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts'
+import {
+  PERIOD_MAP,
+  useDashboard,
+} from '@/components/dashboard/layout/DashboardContext'
+import { fetchCategories } from '@/lib/api/dashboard'
+import CategoryChartSkeleton from './CategoryChartSkeleton'
+
+function formatAUD(amount: number) {
+  return new Intl.NumberFormat('en-AU', {
+    style: 'currency',
+    currency: 'AUD',
+    minimumFractionDigits: 2,
+  }).format(amount)
+}
+
+const CustomTooltip = ({ active, payload }: any) => {
+  if (!active || !payload?.length) return null
+  const { category, amount, percentage } = payload[0].payload
+  return (
+    <div className="bg-[#0d1f2d] border border-[#1a2d3d] rounded-xl p-3 text-xs flex flex-col gap-1">
+      <span className="text-white font-semibold">{category}</span>
+      <span className="text-[#8b949e]">{formatAUD(amount)}</span>
+      <span className="text-[#8b949e]">{percentage}%</span>
+    </div>
+  )
+}
+
+export default function CategoryChart() {
+  const { period, customRange } = useDashboard()
+  const { getToken } = useAuth()
+
+  const apiPeriod = PERIOD_MAP[period] ?? 'month'
+  const fromStr = customRange?.from
+    ? `${customRange.from.getFullYear()}-${String(customRange.from.getMonth() + 1).padStart(2, '0')}-${String(customRange.from.getDate()).padStart(2, '0')}`
+    : undefined
+
+  const toStr = customRange?.to
+    ? `${customRange.to.getFullYear()}-${String(customRange.to.getMonth() + 1).padStart(2, '0')}-${String(customRange.to.getDate()).padStart(2, '0')}`
+    : undefined
+
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ['dashboard-categories', apiPeriod, fromStr, toStr],
+    queryFn: () => fetchCategories(apiPeriod, getToken, fromStr, toStr),
+    enabled: apiPeriod !== 'custom' || (!!fromStr && !!toStr),
+  })
+
+  if (isLoading) return <CategoryChartSkeleton />
+
+  if (isError || !data || data.length === 0) {
+    return (
+      <div className="bg-[#0d1f2d] border border-[#1a2d3d] rounded-xl p-5 flex items-center justify-center h-full">
+        <p className="text-sm text-[#8b949e]">
+          No spending data for this period.
+        </p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="bg-[#0d1f2d] border border-[#1a2d3d] rounded-xl p-5 flex flex-col gap-4">
+      <div>
+        <h2 className="text-sm font-semibold text-white">
+          Spending by Category
+        </h2>
+        <p className="text-xs text-[#8b949e]">Top categories this period</p>
+      </div>
+
+      <div className="flex flex-col items-center gap-1">
+        <div className="w-full md:w-52 h-52 shrink-0 **:outline-none">
+          <ResponsiveContainer width="100%" height="100%">
+            <PieChart>
+              <Pie
+                data={data}
+                cx="50%"
+                cy="50%"
+                innerRadius="60%"
+                outerRadius="80%"
+                dataKey="amount"
+                paddingAngle={3}
+                strokeWidth={0}
+              >
+                {data.map((item, index) => (
+                  <Cell key={index} fill={item.color} />
+                ))}
+              </Pie>
+
+              <Tooltip content={<CustomTooltip />} />
+
+              {/* Center label moved HERE so it renders on top of the Pie layer */}
+              <text
+                x="50%"
+                y="50%"
+                textAnchor="middle"
+                dominantBaseline="middle"
+                fill="#ffffff"
+                fontSize={14}
+                fontWeight={700}
+              >
+                {formatAUD(data.reduce((sum, d) => sum + d.amount, 0))}
+              </text>
+            </PieChart>
+          </ResponsiveContainer>
+        </div>
+
+        <div className="flex flex-col gap-2.5 w-full min-w-0 overflow-hidden">
+          {data.map((item, index) => (
+            <div
+              key={index}
+              className="flex items-center justify-between gap-2 min-w-0"
+            >
+              <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                <span
+                  className="flex-none w-2 h-2 rounded-full"
+                  style={{ background: item.color }}
+                />
+                <span
+                  className="text-xs text-[#8b949e] truncate"
+                  title={item.category}
+                >
+                  {item.category}
+                </span>
+              </div>
+              <div className="flex items-center gap-3 shrink-0">
+                <div className="w-20 h-1.5 rounded-full bg-[#1a2d3d]">
+                  <div
+                    className="h-full rounded-full"
+                    style={{
+                      background: item.color,
+                      width: `${item.percentage}%`,
+                    }}
+                  />
+                </div>
+                <span className="text-xs text-white font-medium text-right w-16">
+                  {formatAUD(item.amount)}
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}

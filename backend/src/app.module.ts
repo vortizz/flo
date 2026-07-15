@@ -1,0 +1,41 @@
+import { Module } from '@nestjs/common'
+import { ConfigModule } from '@nestjs/config'
+import { APP_GUARD } from '@nestjs/core'
+import { AppController } from './app.controller'
+import { PrismaModule } from './prisma.module'
+import { AuthModule } from './modules/auth/auth.module'
+import { ClerkAuthGuard } from './modules/auth/clerk.guard'
+import { UsersModule } from './modules/users/users.module'
+import { BasiqModule } from './modules/basiq/basiq.module'
+import { InstitutionsModule } from './modules/institutions/institutions.module'
+import appConfig from './config/app.config'
+import { DashboardModule } from './modules/dashboard/dashboard.module'
+import { TransactionsModule } from './modules/transactions/transactions.module'
+import { AccountsModule } from './modules/accounts/accounts.module'
+import { CategoriesModule } from './modules/categories/categories.module'
+
+@Module({
+  imports: [
+    ConfigModule.forRoot({
+      isGlobal: true,
+      load: [appConfig],
+    }),
+    PrismaModule,
+    AuthModule,
+    UsersModule,
+    BasiqModule,
+    InstitutionsModule,
+    DashboardModule,
+    TransactionsModule,
+    AccountsModule,
+    CategoriesModule,
+  ],
+  controllers: [AppController],
+  providers: [
+    {
+      provide: APP_GUARD,
+      useClass: ClerkAuthGuard,
+    },
+  ],
+})
+export class AppModule {}

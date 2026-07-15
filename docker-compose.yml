@@ -1,0 +1,71 @@
+services:
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    ports:
+      - '3000:3000'
+    volumes:
+      - ./apps/web:/app/apps/web
+      - ./packages:/app/packages
+      - /app/apps/web/node_modules
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:4000
+    depends_on:
+      - backend
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+      target: development
+    ports:
+      - '4000:4000'
+    volumes:
+      - ./backend/src:/app/backend/src
+      - ./packages:/app/packages
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - DIRECT_URL=${DIRECT_URL}
+      - PORT=4000
+      - FRONTEND_URL=http://localhost:3000
+      - BASIQ_API_KEY=${BASIQ_API_KEY}
+      - BASIQ_BASE_URL=${BASIQ_BASE_URL}
+    depends_on:
+      - db
+
+  db-deploy:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+      target: development
+    restart: on-failure
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - DIRECT_URL=${DIRECT_URL}
+      - BASIQ_API_KEY=${BASIQ_API_KEY}
+      - BASIQ_BASE_URL=${BASIQ_BASE_URL}
+    command: >
+      sh -c "npx prisma migrate deploy && npx prisma db seed"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: postgres:16-alpine
+    ports:
+      - '5432:5432'
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=flo
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres -d flo']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:

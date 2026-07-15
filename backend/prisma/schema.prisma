@@ -1,0 +1,116 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id                  String       @id @default(cuid())
+  clerkId             String       @unique
+  email               String       @unique
+  fullName            String
+  avatarUrl           String?
+  mobile              String?
+  basiqUserId         String?      @unique
+  onboardingCompleted Boolean      @default(false)
+  accounts            Account[]
+  categories          Category[]
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
+}
+
+model Account {
+  id                String        @id @default(cuid())
+  userId            String
+  user              User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bankName          String
+  accountName       String
+  basiqId           String?       @unique
+  balance           Decimal       @default(0) @db.Decimal(12, 2)
+  status            AccountStatus @default(CONNECTED)
+  lastSyncedAt      DateTime?
+  transactions      Transaction[]
+  last4             String?
+  accountType       String?
+  institutionId     String?
+  institution       Institution?  @relation(fields: [institutionId], references: [id])
+  basiqConnectionId String?
+  isCash            Boolean       @default(false)
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+}
+
+model Transaction {
+  id          String          @id @default(cuid())
+  accountId   String
+  account     Account         @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  basiqId     String?         @unique
+  amount      Decimal         @db.Decimal(12, 2)
+  type        TransactionType
+  merchant    String
+  categoryId  String?
+  category    Category?       @relation(fields: [categoryId], references: [id])
+  source      SourceType      @default(BASIQ)
+  description String?
+  date        DateTime
+  raw         Json?
+  isExcluded  Boolean         @default(false)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+}
+
+model Category {
+  id           String            @id @default(cuid())
+  userId       String?
+  user         User?             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name         String
+  type         TransactionType
+  color        String
+  icon         String
+  transactions Transaction[]
+  mappings     CategoryMapping[]
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+
+  @@unique([userId, name, type])
+}
+
+model CategoryMapping {
+  id         String   @id @default(cuid())
+  basiqLabel String
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id])
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model Institution {
+  id              String    @id
+  name            String
+  shortName       String?
+  institutionType String?
+  country         String?
+  logoUrl         String?
+  isActive        Boolean   @default(true)
+  isPopular       Boolean   @default(false)
+  accounts        Account[]
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
+
+enum TransactionType {
+  DEBIT
+  CREDIT
+}
+
+enum SourceType {
+  BASIQ
+  MANUAL
+}
+
+enum AccountStatus {
+  CONNECTED
+  DISCONNECTED
+}
